@@ -1,0 +1,15 @@
+{
+  "name": "cms-trade",
+  "version": "1.0.0",
+  "description": "可部署到 Cloudflare Pages 的交易记录 CMS：注册(手机验证码)/登录/发帖/后台管理/搜索/合并导出",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy public",
+    "db:init": "wrangler d1 execute cms-trade-db --file=./schema.sql --remote"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

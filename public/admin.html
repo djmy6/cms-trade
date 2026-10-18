@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>后台管理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <span class="brand">交易记录 CMS</span>
+  <a class="link" href="index.html">首页</a>
+  <a class="link" href="publish.html">发布</a>
+  <a class="link" href="admin.html">后台管理</a>
+  <a class="link" href="settings.html">对外显示设置</a>
+  <div class="spacer"></div>
+  <span class="user-chip" id="nav-user"></span>
+  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+</div></nav>
+
+<div class="container">
+  <h2 style="margin-bottom:14px">后台管理</h2>
+  <div class="stat-grid" id="stats"></div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">用户管理</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>手机号</th><th>昵称</th><th>角色</th><th>帖数</th><th>注册时间</th><th>操作</th></tr></thead>
+      <tbody id="users-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">全部帖子</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>平台</th><th>店铺</th><th>买家账号</th><th>买家姓名</th><th>单号</th><th>金额</th><th>发布人</th><th>操作</th></tr></thead>
+      <tbody id="posts-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="assets/api.js"></script>
+<script>
+function renderNav() {
+  const u = Api.user;
+  if (u) {
+    document.getElementById('nav-user').textContent = u.name || u.phone;
+    document.getElementById('nav-logout').style.display = '';
+  }
+}
+document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+
+async function loadStats() {
+  const { stats } = await Api.admin('stats');
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${esc(stats.users)}</div><div class="t">注册用户</div></div>
+    <div class="stat"><div class="n">${esc(stats.posts)}</div><div class="t">帖子总数</div></div>
+    <div class="stat"><div class="n">${esc(stats.admins)}</div><div class="t">管理员</div></div>
+    <div class="stat"><div class="n">${esc(stats.refundAmount)}</div><div class="t">仅退款金额合计</div></div>`;
+}
+
+async function loadUsers() {
+  const { list } = await Api.admin('users');
+  document.getElementById('users-tbody').innerHTML = list.map((u) => `
+    <tr>
+      <td>${u.id}</td><td>${esc(u.phone)}</td><td>${esc(u.name || '-')}</td>
+      <td>${u.role === 'admin' ? '管理员' : '用户'}</td><td>${u.post_count}</td><td>${esc(u.created_at)}</td>
+      <td>
+        ${u.role === 'admin'
+          ? `<button class="btn-sm ghost" onclick="setRole(${u.id},'user')">取消管理员</button>`
+          : `<button class="btn-sm" onclick="setRole(${u.id},'admin')">设为管理员</button>`}
+        <button class="btn-sm danger" onclick="delUser(${u.id})">删除</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7">暂无用户</td></tr>';
+}
+
+async function loadPosts() {
+  const { list } = await Api.admin('posts');
+  document.getElementById('posts-tbody').innerHTML = list.map((p) => `
+    <tr>
+      <td>${p.id}</td><td>${esc(p.platform || '-')}</td><td>${esc(p.shop_name || '-')}</td>
+      <td>${esc(p.buyer_account || '-')}</td><td>${esc(p.buyer_name || '-')}</td>
+      <td>${esc(p.tracking_no || '-')}</td><td>${esc(p.amount || '-')}</td>
+      <td>${esc(p.author_name || p.author_phone || p.user_id)}</td>
+      <td><button class="btn-sm danger" onclick="delPost(${p.id})">删除</button></td>
+    </tr>`).join('') || '<tr><td colspan="9">暂无帖子</td></tr>';
+}
+
+async function setRole(id, role) {
+  try { await Api.setRole(id, role); toast('已更新'); loadUsers(); } catch (e) { toast(e.message, false); }
+}
+async function delUser(id) {
+  if (!confirm('确认删除该用户及其全部帖子？')) return;
+  try { await Api.deleteUser(id); toast('已删除'); loadUsers(); loadPosts(); } catch (e) { toast(e.message, false); }
+}
+async function delPost(id) {
+  if (!confirm('确认删除该帖子？')) return;
+  try { await Api.deletePost(id); toast('已删除'); loadPosts(); } catch (e) { toast(e.message, false); }
+}
+
+renderNav();
+Promise.all([loadStats(), loadUsers(), loadPosts()]).catch((e) => {
+  if (e.message.includes('管理员')) toast('需要管理员权限', false);
+  else if (e.message.includes('未登录')) location.href = 'login.html';
+  else toast(e.message, false);
+});
+</script>
+</body>
+</html>

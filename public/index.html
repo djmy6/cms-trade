@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交易记录查询 - 首页</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z' opacity='.9'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EC%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <span class="brand">交易记录 CMS</span>
+  <a class="link" href="index.html">首页</a>
+  <a class="link" href="publish.html">发布</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
+  <a class="link" href="settings.html">对外显示设置</a>
+  <div class="spacer"></div>
+  <span class="user-chip" id="nav-user"></span>
+  <a class="link" id="nav-login" href="login.html">登录</a>
+  <a class="link" id="nav-logout" href="#" style="display:none">退出</a>
+</div></nav>
+
+<div class="container">
+  <div class="search-bar card" style="padding:16px">
+    <input id="name_exact" placeholder="买家姓名（完全匹配）">
+    <input id="address_exact" placeholder="收货地址（完全匹配）">
+    <input id="tracking4" placeholder="订单号后四位" maxlength="4">
+    <button class="btn" id="btn-search">搜索他人记录</button>
+    <button class="btn ghost" id="btn-export">导出命中的他人记录</button>
+  </div>
+  <div class="hint blue">至少填写一项；只有<strong>完全匹配</strong>（姓名 / 地址 / 订单号后四位任一项相等）才会命中，并<strong>完整显示</strong>对方发布的记录。仅搜索他人发布的内容，不含你自己上传的记录。</div>
+  <div id="list"></div>
+  <div id="pager" style="display:none;text-align:center;margin-top:12px">
+    <button class="btn ghost" id="btn-prev">上一页</button>
+    <span id="page-info" style="margin:0 12px;color:var(--muted)"></span>
+    <button class="btn ghost" id="btn-next">下一页</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="assets/api.js"></script>
+<script>
+const F = {
+  platform:'交易平台', shop_name:'店铺名称', item:'购买物品', amount:'物品金额',
+  buyer_account:'买家账号', buyer_name:'买家姓名', buyer_real_phone:'买家真实号码',
+  buyer_virtual_phone:'买家虚拟号码', buyer_address:'买家地址', tracking_no:'快递单号',
+  refund_count:'仅退款次数', refund_amount:'仅退款金额',
+};
+let page = 1, size = 20, total = 0;
+
+function renderNav() {
+  const u = Api.user;
+  if (u) {
+    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role === 'admin' ? ' · 管理员' : '');
+    document.getElementById('nav-login').style.display = 'none';
+    document.getElementById('nav-logout').style.display = '';
+    if (u.role === 'admin') document.getElementById('nav-admin').style.display = '';
+  } else {
+    document.getElementById('nav-user').textContent = '未登录';
+  }
+}
+document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.reload(); };
+
+function render(list) {
+  const box = document.getElementById('list');
+  if (!list.length) { box.innerHTML = '<div class="empty">请填写 买家姓名 / 收货地址 / 订单号后四位 至少一项，完全匹配后查看他人记录</div>'; return; }
+  box.innerHTML = list.map((p) => `
+    <div class="post-card" onclick="location.href='post.html?id=${p.id}'">
+      <div class="post-title"><span class="tag">${esc(p.platform || '未填平台')}</span>${esc(p.shop_name || p.item || '记录 #' + p.id)}</div>
+      <div class="kv">
+        ${p.platform !== undefined && p.platform ? `<div><b>交易平台</b><span>${esc(p.platform)}</span></div>` : ''}
+        ${p.shop_name ? `<div><b>店铺名称</b><span>${esc(p.shop_name)}</span></div>` : ''}
+        ${p.item ? `<div><b>购买物品</b><span>${esc(p.item)}</span></div>` : ''}
+        ${p.amount ? `<div><b>物品金额</b><span>${esc(p.amount)}</span></div>` : ''}
+        ${p.buyer_account ? `<div><b>买家账号</b><span>${esc(p.buyer_account)}</span></div>` : ''}
+        ${p.buyer_name ? `<div><b>买家姓名</b><span>${esc(p.buyer_name)}</span></div>` : ''}
+        ${p.buyer_real_phone ? `<div><b>买家真实号码</b><span>${esc(p.buyer_real_phone)}</span></div>` : ''}
+        ${p.buyer_virtual_phone ? `<div><b>买家虚拟号码</b><span>${esc(p.buyer_virtual_phone)}</span></div>` : ''}
+        ${p.buyer_address ? `<div><b>买家地址</b><span>${esc(p.buyer_address)}</span></div>` : ''}
+        ${p.tracking_no ? `<div><b>快递单号</b><span>${esc(p.tracking_no)}</span></div>` : ''}
+        ${p.refund_count ? `<div><b>仅退款次数</b><span>${esc(p.refund_count)}</span></div>` : ''}
+        ${p.refund_amount ? `<div><b>仅退款金额</b><span>${esc(p.refund_amount)}</span></div>` : ''}
+      </div>
+      <div class="post-meta"><span>发布：${esc(p.author_name || '用户' + p.user_id)}</span><span>${esc(p.created_at)}</span></div>
+    </div>`).join('');
+}
+
+async function load() {
+  const name_exact = document.getElementById('name_exact').value.trim();
+  const address_exact = document.getElementById('address_exact').value.trim();
+  const tracking4 = document.getElementById('tracking4').value.trim();
+  const data = await Api.posts({ name_exact, address_exact, tracking4, page, size });
+  total = data.total; render(data.list);
+  const pg = document.getElementById('pager');
+  pg.style.display = total > size ? '' : 'none';
+  document.getElementById('page-info').textContent = `共 ${total} 条 · 第 ${page} 页`;
+}
+
+async function doExport() {
+  const name_exact = document.getElementById('name_exact').value.trim();
+  const address_exact = document.getElementById('address_exact').value.trim();
+  const tracking4 = document.getElementById('tracking4').value.trim();
+  try {
+    const csv = await Api.exportCsv({ name_exact, address_exact, tracking4 });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '命中记录导出.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('已导出 ' + (total || '') + ' 条');
+  } catch (e) { toast(e.message, false); }
+}
+
+document.getElementById('btn-search').onclick = () => { page = 1; doSearch(); };
+document.getElementById('btn-prev').onclick = () => { if (page > 1) { page--; doSearch(); } };
+document.getElementById('btn-next').onclick = () => { if (page * size < total) { page++; doSearch(); } };
+document.getElementById('btn-export').onclick = doExport;
+['name_exact','address_exact','tracking4'].forEach((id) => {
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { page = 1; doSearch(); } });
+});
+
+function doSearch() {
+  const has = ['name_exact','address_exact','tracking4'].some((id) => document.getElementById(id).value.trim());
+  if (!has) { render([]); document.getElementById('pager').style.display = 'none'; return; }
+  load().catch((e) => {
+    if (e.message.includes('登录')) {
+      toast('请先登录后搜索他人记录', false);
+      setTimeout(() => location.href = 'login.html', 800);
+    } else { toast(e.message, false); }
+  });
+}
+
+renderNav();
+doSearch();
+</script>
+</body>
+</html>

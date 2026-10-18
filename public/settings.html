@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>对外显示设置</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <span class="brand">交易记录 CMS</span>
+  <a class="link" href="index.html">首页</a>
+  <a class="link" href="publish.html">发布</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
+  <a class="link" href="settings.html">对外显示设置</a>
+  <div class="spacer"></div>
+  <span class="user-chip" id="nav-user"></span>
+  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+</div></nav>
+
+<div class="container">
+  <div class="card" style="max-width:640px">
+    <h2 style="margin-bottom:6px">对外显示设置</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:14px">控制你发布的交易记录中，哪些字段对其他登录用户可见。买家真实号码、地址等敏感字段建议保持关闭。</p>
+    <div class="hint blue">管理员始终可见全部字段（不受此设置影响）。</div>
+    <div id="switches"></div>
+    <div style="margin-top:16px">
+      <button class="btn" id="btn-save">保存设置</button>
+      <span id="saved" style="margin-left:12px;color:#16a34a;font-size:13px"></span>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="assets/api.js"></script>
+<script>
+const ITEMS = [
+  ['show_platform','交易平台','对外展示交易平台'],['show_shop','店铺名称','对外展示店铺名称'],
+  ['show_item','购买物品','对外展示购买物品'],['show_amount','物品金额','对外展示物品金额'],
+  ['show_buyer_account','买家账号','对外展示买家账号'],['show_buyer_name','买家姓名','对外展示买家姓名'],
+  ['show_real_phone','买家真实号码','敏感，建议关闭'],['show_virtual_phone','买家虚拟号码','敏感，建议关闭'],
+  ['show_address','买家地址','敏感，建议关闭'],['show_tracking','快递单号','对外展示快递单号'],
+  ['show_refund_count','仅退款次数','对外展示仅退款次数'],['show_refund_amount','仅退款金额','对外展示仅退款金额'],
+];
+function renderNav() {
+  const u = Api.user;
+  if (u) {
+    document.getElementById('nav-user').textContent = u.name || u.phone;
+    document.getElementById('nav-logout').style.display = '';
+    if (u.role === 'admin') document.getElementById('nav-admin').style.display = '';
+  }
+}
+document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+
+async function load() {
+  const { settings } = await Api.settings();
+  document.getElementById('switches').innerHTML = ITEMS.map(([k, lab, desc]) => `
+    <div class="switch-row">
+      <div><div class="switch-label">${lab}</div><div class="switch-desc">${desc}</div></div>
+      <label class="switch"><input type="checkbox" id="sw-${k}" ${settings[k] === 1 || settings[k] === undefined ? 'checked' : ''}><span class="slider"></span></label>
+    </div>`).join('');
+}
+
+document.getElementById('btn-save').onclick = async () => {
+  const s = {};
+  for (const [k] of ITEMS) s[k] = document.getElementById('sw-' + k).checked ? 1 : 0;
+  try {
+    await Api.saveSettings(s);
+    document.getElementById('saved').textContent = '已保存';
+    setTimeout(() => document.getElementById('saved').textContent = '', 2000);
+  } catch (e) { toast(e.message, false); }
+};
+
+renderNav();
+load().catch((e) => { if (e.message.includes('未登录')) location.href = 'login.html'; else toast(e.message, false); });
+</script>
+</body>
+</html>

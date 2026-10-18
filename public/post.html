@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交易记录详情</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <span class="brand">交易记录 CMS</span>
+  <a class="link" href="index.html">首页</a>
+  <a class="link" href="publish.html">发布</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
+  <a class="link" href="settings.html">对外显示设置</a>
+  <div class="spacer"></div>
+  <span class="user-chip" id="nav-user"></span>
+  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+</div></nav>
+
+<div class="container">
+  <div class="card" id="detail"></div>
+</div>
+<div id="toast"></div>
+<script src="assets/api.js"></script>
+<script>
+const F = [
+  ['platform','交易平台'],['shop_name','店铺名称'],['item','购买物品'],['amount','物品金额'],
+  ['buyer_account','买家账号'],['buyer_name','买家姓名'],['buyer_real_phone','买家真实号码'],
+  ['buyer_virtual_phone','买家虚拟号码'],['buyer_address','买家地址'],['tracking_no','快递单号'],
+  ['refund_count','仅退款次数'],['refund_amount','仅退款金额'],
+];
+function renderNav() {
+  const u = Api.user;
+  if (u) {
+    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role === 'admin' ? ' · 管理员' : '');
+    document.getElementById('nav-logout').style.display = '';
+    if (u.role === 'admin') document.getElementById('nav-admin').style.display = '';
+  }
+}
+document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+
+const id = new URLSearchParams(location.search).get('id');
+async function load() {
+  const d = await Api.post(id);
+  const p = d.post;
+  const u = Api.user;
+  const canEdit = u && (u.role === 'admin' || p.user_id === u.id);
+  const rows = F.map(([k, lab]) => p[k] !== undefined && p[k] !== '' && p[k] !== 0
+    ? `<div class="kv-item"><b>${lab}</b><span>${esc(p[k])}</span></div>` : '').join('');
+  document.getElementById('detail').innerHTML = `
+    <h2 style="margin-bottom:6px">${esc(p.shop_name || p.item || '交易记录 #' + p.id)}</h2>
+    <div class="post-meta" style="margin-bottom:16px">
+      <span>发布：${esc(p.author_name || '用户' + p.user_id)}</span><span>${esc(p.created_at)}</span>
+    </div>
+    <div class="kv" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${rows}</div>
+    <div style="margin-top:18px;display:flex;gap:10px">
+      ${canEdit ? `<button class="btn" onclick="location.href='publish.html?id=${p.id}'">编辑</button>
+      <button class="btn danger" id="btn-del">删除</button>` : ''}
+      <button class="btn ghost" onclick="history.back()">返回</button>
+    </div>`;
+  if (canEdit) document.getElementById('btn-del').onclick = async () => {
+    if (!confirm('确认删除这条记录？')) return;
+    try { await Api.deletePost(p.id); toast('已删除'); setTimeout(() => location.href = 'index.html', 500); }
+    catch (e) { toast(e.message, false); }
+  };
+}
+renderNav();
+load().catch((e) => { if (e.message.includes('未登录')) location.href = 'login.html'; else toast(e.message, false); });
+</script>
+</body>
+</html>

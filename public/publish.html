@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>发布交易记录</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <span class="brand">交易记录 CMS</span>
+  <a class="link" href="index.html">首页</a>
+  <a class="link" href="publish.html">发布</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
+  <a class="link" href="settings.html">对外显示设置</a>
+  <div class="spacer"></div>
+  <span class="user-chip" id="nav-user"></span>
+  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+</div></nav>
+
+<div class="container">
+  <div class="card">
+    <h2 id="title" style="margin-bottom:16px">发布交易记录</h2>
+    <div class="hint blue">带 <b style="color:var(--danger)">*</b> 的至少填一项。对外是否展示这些字段，可在「对外显示设置」中控制。</div>
+    <div class="form-grid">
+      <div class="form-group"><label>交易平台</label><input id="platform" placeholder="如：淘宝 / 拼多多"></div>
+      <div class="form-group"><label>店铺名称</label><input id="shop_name" placeholder="店铺名"></div>
+      <div class="form-group"><label>购买物品</label><input id="item" placeholder="购买物品名称"></div>
+      <div class="form-group"><label>物品金额</label><input id="amount" placeholder="金额"></div>
+      <div class="form-group"><label><b style="color:var(--danger)">*</b> 买家账号</label><input id="buyer_account" placeholder="买家账号"></div>
+      <div class="form-group"><label>买家姓名</label><input id="buyer_name" placeholder="买家姓名"></div>
+      <div class="form-group"><label>买家真实号码</label><input id="buyer_real_phone" placeholder="真实手机号"></div>
+      <div class="form-group"><label>买家虚拟号码</label><input id="buyer_virtual_phone" placeholder="虚拟号码"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>买家地址</label><input id="buyer_address" placeholder="收货地址"></div>
+      <div class="form-group"><label>快递单号</label><input id="tracking_no" placeholder="快递单号"></div>
+      <div class="form-group"><label>仅退款次数</label><input id="refund_count" type="number" min="0" placeholder="0"></div>
+      <div class="form-group"><label>仅退款金额</label><input id="refund_amount" placeholder="金额"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn" id="btn-save">保存发布</button>
+      <button class="btn ghost" onclick="location.href='index.html'">返回</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<script src="assets/api.js"></script>
+<script>
+if (!authRequired()) {}
+const url = new URLSearchParams(location.search);
+const editId = url.get('id');
+
+function renderNav() {
+  const u = Api.user;
+  if (u) {
+    document.getElementById('nav-user').textContent = u.name || u.phone;
+    document.getElementById('nav-logout').style.display = '';
+    if (u.role === 'admin') document.getElementById('nav-admin').style.display = '';
+  }
+}
+document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+
+const IDS = ['platform','shop_name','item','amount','buyer_account','buyer_name','buyer_real_phone','buyer_virtual_phone','buyer_address','tracking_no','refund_count','refund_amount'];
+
+if (editId) {
+  document.getElementById('title').textContent = '编辑交易记录';
+  Api.post(editId).then((d) => {
+    for (const id of IDS) document.getElementById(id).value = d.post[id] || '';
+  }).catch((e) => toast(e.message, false));
+}
+
+document.getElementById('btn-save').onclick = async () => {
+  const p = {};
+  for (const id of IDS) p[id] = document.getElementById(id).value.trim();
+  try {
+    if (editId) { await Api.updatePost(editId, p); toast('已更新'); }
+    else { await Api.createPost(p); toast('发布成功'); }
+    setTimeout(() => location.href = 'index.html', 500);
+  } catch (e) { toast(e.message, false); }
+};
+renderNav();
+</script>
+</body>
+</html>
