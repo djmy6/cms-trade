@@ -1,5 +1,5 @@
 // POST /api/forum/topics/:id/reply   回帖（登录）
-import { json, error, readBody, authFromRequest } from '../../_utils.js';
+import { json, error, readBody, authFromRequest } from '../../../_utils.js';
 
 export const onRequestPost = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);

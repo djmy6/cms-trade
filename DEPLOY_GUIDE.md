@@ -103,7 +103,12 @@ cd D:\cms-trade
 wrangler d1 execute cms-trade-db --file=./schema.sql --remote
 ```
 
-看到成功信息（创建的几张表）即完成。这会一次性在远程 D1 上建好 `users`、`sms_codes`、`posts`、`display_settings` 四张表。
+看到成功信息（创建的几张表）即完成。这会一次性建好全部表（用户、帖子、显示设置、自定义字段、论坛板块/主题/回帖），并自动创建默认管理员账号。
+
+> **如果之前已经部署过旧版、数据库里已存在 `users`/`posts` 等表**：不要重复执行 `schema.sql`（会因表已存在而报错），改用 `migration.sql` 补齐 v2 新列和新表：
+> ```bash
+> wrangler d1 execute cms-trade-db --file=./migration.sql --remote
+> ```
 
 > 另一种方式：在 Cloudflare 控制台 D1 → 点数据库名 → **Console**，把 `schema.sql` 全文粘贴进去执行，效果一样。
 
@@ -190,34 +195,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ---
 
-## 10. 设置管理员
+## 10. 管理员
 
-注册功能默认所有人都是一般用户（`role=user`）。你需要把自己设成管理员（`role=admin`）才能用后台管理。
+建库时会**自动创建默认管理员**账号 `djmy` / 密码 `000000`。在登录页点「一键填入」即可登录，登录后顶部出现「后台管理」入口，无需额外设置。
 
-**第一步：先在网页上注册一个账号**
-打开你的 `https://cms-trade-xxxxx.pages.dev` → 右上 **登录** → **去注册** → 填手机号 → 点「获取验证码」→ 开发模式下页面直接显示测试验证码（默认 `123456`）→ 填入 → 设密码 → 注册成功。
-
-**第二步：把该账号提升为管理员**
-
-方式一（D1 Console 可视化，推荐）：
-1. 控制台 → **Workers & Pages → D1 → cms-trade-db → Console**
-2. 执行：
-```sql
-UPDATE users SET role='admin' WHERE phone='你的注册手机号';
-```
-3. 再执行下面这条确认已生效（返回一行、role 是 admin）：
-```sql
-SELECT phone, name, role FROM users;
-```
-
-方式二（命令行）：
-```bash
-wrangler d1 execute cms-trade-db \
-  --command="UPDATE users SET role='admin' WHERE phone='你的注册手机号'" \
-  --remote
-```
-
-完成后，重新登录该账号，顶部会出现「后台管理」入口。
+> 历史流程（可跳过）：如果你更想用自己注册的手机号做管理员，注册后在 D1 Console 执行：
+> ```sql
+> UPDATE users SET role='admin' WHERE phone='你的注册手机号';
+> ```
 
 ---
 
@@ -225,11 +210,13 @@ wrangler d1 execute cms-trade-db \
 
 部署完成后，用两个手机号各注册一个账号，分别发一条交易记录，然后：
 
-1. **登录账号 A** → 发一条买家信息（姓名/地址/单号）
-2. **登录账号 B** → 发一条信息，用 A 的买家姓名或地址或单号后四位去首页搜索
-3. 确认：只显示 B 自己以外的、完全匹配的记录，且**完整显示**对方记录全部字段
+1. **登录账号 A** → 发一条交易记录（地址用省/市/区县/街道级联选择，可填写自定义字段）
+2. **登录账号 B** → 发一条记录，用 A 的买家姓名或地址关键词（如街道名）或单号后四位去首页搜索
+3. 确认：只显示 B 自己以外的、命中的记录，且**完整显示**对方记录全部字段（含自定义字段）
 4. 点「导出命中的他人记录」→ 下载 CSV
-5. 用管理员账号进「后台管理」→ 看用户列表、帖子全览、统计
+5. **管理员登录**（djmy / 000000）→ 后台管理 → 用户、帖子、统计、**自定义字段管理**（添加字段后发布页会动态出现）、**论坛板块管理**
+6. **论坛**：首页点「交流论坛」→ 发帖、选择板块、写标题内容 → 其他账号回帖
+7. 用注册账号在「对外显示设置」中开关字段，观察他人视角是否生效
 
 ---
 
