@@ -6,7 +6,7 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "cms-trade-db"
-database_id = "65372e7a-a35a-41e2-bdee-b23e92fd719d"
+database_id = "YOUR_D1_DATABASE_ID"
 
 # 运行环境变量（在 Pages 项目设置中配置 Secrets / Environment Variables）
 # SECRET_KEY             JWT 签名密钥（必填，随机长字符串）
