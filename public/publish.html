@@ -14,6 +14,7 @@
   <a class="link" href="publish.html">发布</a>
   <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
   <a class="link" href="settings.html">对外显示设置</a>
+  <a class="link" href="forum.html">交流论坛</a>
   <div class="spacer"></div>
   <span class="user-chip" id="nav-user"></span>
   <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
@@ -32,10 +33,19 @@
       <div class="form-group"><label>买家姓名</label><input id="buyer_name" placeholder="买家姓名"></div>
       <div class="form-group"><label>买家真实号码</label><input id="buyer_real_phone" placeholder="真实手机号"></div>
       <div class="form-group"><label>买家虚拟号码</label><input id="buyer_virtual_phone" placeholder="虚拟号码"></div>
-      <div class="form-group" style="grid-column:1/-1"><label>买家地址</label><input id="buyer_address" placeholder="收货地址"></div>
+      <div class="form-group" style="grid-column:1/-1"><label>买家地址（省 / 市 / 县区 / 乡镇街道）</label>
+        <div class="addr-row">
+          <select id="address_province"><option value="">请选择省</option></select>
+          <select id="address_city" disabled><option value="">请选择市</option></select>
+          <select id="address_district" disabled><option value="">请选择县/区</option></select>
+          <select id="address_street" disabled><option value="">请选择乡镇/街道</option></select>
+        </div>
+      </div>
+      <div class="form-group" style="grid-column:1/-1"><label>详细地址</label><input id="address_detail" placeholder="门牌号、小区、楼栋等（自行填写）"></div>
       <div class="form-group"><label>快递单号</label><input id="tracking_no" placeholder="快递单号"></div>
       <div class="form-group"><label>仅退款次数</label><input id="refund_count" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>仅退款金额</label><input id="refund_amount" placeholder="金额"></div>
+      <div id="custom-fields" style="grid-column:1/-1"></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="btn" id="btn-save">保存发布</button>
@@ -45,10 +55,13 @@
 </div>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
+<script src="assets/regions.js"></script>
 <script>
 if (!authRequired()) {}
 const url = new URLSearchParams(location.search);
 const editId = url.get('id');
+const REG = window.REGIONS || [];
+let CFIELDS = [];
 
 function renderNav() {
   const u = Api.user;
@@ -60,25 +73,93 @@ function renderNav() {
 }
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
 
-const IDS = ['platform','shop_name','item','amount','buyer_account','buyer_name','buyer_real_phone','buyer_virtual_phone','buyer_address','tracking_no','refund_count','refund_amount'];
+const IDS = ['platform','shop_name','item','amount','buyer_account','buyer_name','buyer_real_phone','buyer_virtual_phone','tracking_no','refund_count','refund_amount'];
+
+function fillSel(el, items, ph) {
+  el.innerHTML = '<option value="">' + ph + '</option>' +
+    (items || []).map((x) => '<option value="' + esc(x.name) + '">' + esc(x.name) + '</option>').join('');
+}
+function bindAddr() {
+  const p = document.getElementById('address_province');
+  const c = document.getElementById('address_city');
+  const d = document.getElementById('address_district');
+  const s = document.getElementById('address_street');
+  fillSel(p, REG, '请选择省');
+  p.onchange = () => { const prov = REG.find((x) => x.name === p.value) || {}; fillSel(c, prov.children, '请选择市'); c.disabled = !p.value; fillSel(d, [], '请选择县/区'); d.disabled = !p.value; fillSel(s, [], '请选择乡镇/街道'); s.disabled = !p.value; };
+  c.onchange = () => { const prov = REG.find((x) => x.name === p.value) || {}; const city = (prov.children || []).find((x) => x.name === c.value) || {}; fillSel(d, city.children, '请选择县/区'); d.disabled = !c.value; fillSel(s, [], '请选择乡镇/街道'); s.disabled = !c.value; };
+  d.onchange = () => { const prov = REG.find((x) => x.name === p.value) || {}; const city = (prov.children || []).find((x) => x.name === c.value) || {}; const dist = (city.children || []).find((x) => x.name === d.value) || {}; fillSel(s, dist.children, '请选择乡镇/街道'); s.disabled = !d.value; };
+}
+function setAddr(pn, cn, dn, sn) {
+  const p = document.getElementById('address_province');
+  const c = document.getElementById('address_city');
+  const d = document.getElementById('address_district');
+  const s = document.getElementById('address_street');
+  if (pn) { p.value = pn; p.onchange(); }
+  if (cn) { c.value = cn; c.onchange(); }
+  if (dn) { d.value = dn; d.onchange(); }
+  if (sn) { s.value = sn; }
+}
+
+async function loadFields() {
+  const r = await Api.fields();
+  CFIELDS = r.list || [];
+  const box = document.getElementById('custom-fields');
+  box.innerHTML = '<div style="grid-column:1/-1"></div>'; // keep layout
+  box.innerHTML = CFIELDS.map((f) => {
+    const req = f.required ? '<b style="color:var(--danger)">*</b> ' : '';
+    let input = '';
+    if (f.field_type === 'select') input = '<select id="cf_' + f.field_key + '"><option value="">请选择</option>' + (f.options || '').split(',').map((o) => o.trim()).filter(Boolean).map((o) => '<option value="' + esc(o) + '">' + esc(o) + '</option>').join('') + '</select>';
+    else if (f.field_type === 'textarea') input = '<textarea id="cf_' + f.field_key + '" rows="2" placeholder="' + esc(f.label) + '"></textarea>';
+    else if (f.field_type === 'number') input = '<input id="cf_' + f.field_key + '" type="number" placeholder="' + esc(f.label) + '">';
+    else input = '<input id="cf_' + f.field_key + '" placeholder="' + esc(f.label) + '">';
+    return '<div class="form-group"><label>' + req + esc(f.label) + '</label>' + input + '</div>';
+  }).join('');
+}
 
 if (editId) {
   document.getElementById('title').textContent = '编辑交易记录';
   Api.post(editId).then((d) => {
-    for (const id of IDS) document.getElementById(id).value = d.post[id] || '';
+    const post = d.post;
+    for (const id of IDS) document.getElementById(id).value = post[id] || '';
+    document.getElementById('address_detail').value = post.address_detail || '';
+    setAddr(post.address_province, post.address_city, post.address_district, post.address_street);
+    const extra = {};
+    try { Object.assign(extra, JSON.parse(post.extra_fields || '{}')); } catch {}
+    setTimeout(() => {
+      for (const k of Object.keys(extra)) {
+        const el = document.getElementById('cf_' + k);
+        if (el) el.value = extra[k];
+      }
+    }, 50);
   }).catch((e) => toast(e.message, false));
 }
 
 document.getElementById('btn-save').onclick = async () => {
   const p = {};
   for (const id of IDS) p[id] = document.getElementById(id).value.trim();
+  p.address_province = document.getElementById('address_province').value;
+  p.address_city = document.getElementById('address_city').value;
+  p.address_district = document.getElementById('address_district').value;
+  p.address_street = document.getElementById('address_street').value;
+  p.address_detail = document.getElementById('address_detail').value.trim();
+  for (const f of CFIELDS) {
+    const el = document.getElementById('cf_' + f.field_key);
+    if (el) {
+      const v = el.value.trim();
+      if (f.required && !v) { toast('请填写「' + f.label + '」', false); return; }
+      p['cf_' + f.field_key] = v;
+    }
+  }
   try {
     if (editId) { await Api.updatePost(editId, p); toast('已更新'); }
     else { await Api.createPost(p); toast('发布成功'); }
     setTimeout(() => location.href = 'index.html', 500);
   } catch (e) { toast(e.message, false); }
 };
+
 renderNav();
+bindAddr();
+loadFields().catch(() => {});
 </script>
 </body>
 </html>

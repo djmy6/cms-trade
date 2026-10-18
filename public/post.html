@@ -14,6 +14,7 @@
   <a class="link" href="publish.html">发布</a>
   <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
   <a class="link" href="settings.html">对外显示设置</a>
+  <a class="link" href="forum.html">交流论坛</a>
   <div class="spacer"></div>
   <span class="user-chip" id="nav-user"></span>
   <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
@@ -47,8 +48,16 @@ async function load() {
   const p = d.post;
   const u = Api.user;
   const canEdit = u && (u.role === 'admin' || p.user_id === u.id);
+  let labelMap = {};
+  try { const fr = await Api.fields(); (fr.list || []).forEach((f) => { labelMap[f.field_key] = f.label; }); } catch {}
+  let extraRows = '';
+  try {
+    const extra = JSON.parse(p.extra_fields || '{}');
+    extraRows = Object.keys(extra).filter((k) => extra[k] !== '').map((k) =>
+      `<div class="kv-item"><b>${esc(labelMap[k] || k)}</b><span>${esc(extra[k])}</span></div>`).join('');
+  } catch {}
   const rows = F.map(([k, lab]) => p[k] !== undefined && p[k] !== '' && p[k] !== 0
-    ? `<div class="kv-item"><b>${lab}</b><span>${esc(p[k])}</span></div>` : '').join('');
+    ? `<div class="kv-item"><b>${lab}</b><span>${esc(p[k])}</span></div>` : '').join('') + extraRows;
   document.getElementById('detail').innerHTML = `
     <h2 style="margin-bottom:6px">${esc(p.shop_name || p.item || '交易记录 #' + p.id)}</h2>
     <div class="post-meta" style="margin-bottom:16px">

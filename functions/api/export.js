@@ -8,7 +8,9 @@ const COLS = [
   ['amount', '物品金额'], ['buyer_account', '买家账号'], ['buyer_name', '买家姓名'],
   ['buyer_real_phone', '买家真实号码'], ['buyer_virtual_phone', '买家虚拟号码'],
   ['buyer_address', '买家地址'], ['tracking_no', '快递单号'],
-  ['refund_count', '仅退款次数'], ['refund_amount', '仅退款金额'], ['created_at', '创建时间'],
+  ['refund_count', '仅退款次数'], ['refund_amount', '仅退款金额'],
+  ['address_province', '省'], ['address_city', '市'], ['address_district', '县/区'], ['address_street', '乡镇/街道'],
+  ['extra_fields', '自定义字段'], ['created_at', '创建时间'],
 ];
 
 export const onRequestPost = async ({ env, request }) => {
@@ -23,7 +25,7 @@ export const onRequestPost = async ({ env, request }) => {
   const conds = [];
   const values = [];
   if (name) { conds.push('buyer_name = ?'); values.push(name); }
-  if (addr) { conds.push('buyer_address = ?'); values.push(addr); }
+  if (addr) { conds.push('buyer_address LIKE ?'); values.push('%' + addr + '%'); } // 地址：包含匹配（到街道级命中即导出）
   if (trk) { conds.push('substr(tracking_no, -4) = ?'); values.push(trk); }
   if (!conds.length) return error('请至少填写一项：买家姓名 / 收货地址 / 订单号后四位');
 

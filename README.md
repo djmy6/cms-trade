@@ -5,13 +5,16 @@
 ## 功能清单
 
 - **账号注册**：手机号 + 验证码核验（见下方「短信验证码」），密码加密存储（PBKDF2）
-- **登录**：手机号 + 密码，JWT 会话
+- **登录 / 管理员入口**：手机号 + 密码，JWT 会话；默认管理员账号 `djmy` / 密码 `000000`，登录页有一键填入
 - **发布交易记录帖**，字段（12 项）：
   交易平台、店铺名称、购买物品、物品金额、买家账号、买家姓名、买家真实号码、买家虚拟号码、买家地址、快递单号、仅退款次数、仅退款金额
-- **后台管理**（管理员）：用户列表 / 帖子全览 / 统计 / 设置或取消管理员 / 删除用户与帖子
+- **买家地址级联选择**：省 → 市 → 县/区 → 乡镇/街道（按民政部行政区划代码全量数据）+ 详细地址自行填写
+- **自定义字段**（管理员在后台定义）：发布页动态渲染，文本 / 数字 / 下拉 / 多行文本
+- **后台管理**（管理员）：用户 / 帖子 / 统计 / 自定义字段 / 论坛板块
+- **普通交流论坛**：板块 + 主题 + 回帖（登录用户可发帖、回帖）
 - **对外显示内容设置**：每个用户可控制自己帖子的哪些字段对他人可见（买家真实号码、地址等敏感字段默认关闭）
-- **搜索（精确匹配他人内容）**：只能搜索**他人发布**的内容（自动排除你自己上传的记录）；按 买家姓名 / 收货地址 / 订单号后四位 三个字段**完全匹配**（任一项相等即命中），命中的记录**完整显示**其全部字段，用于核对是否为同一买家
-- **合并导出**：按当前搜索条件，把**完全匹配**的他人记录合并导出为 CSV 下载
+- **搜索（命中他人内容）**：只能搜索**他人发布**的内容（自动排除你自己上传的记录）；按 买家姓名（完全匹配）/ 收货地址（关键词包含匹配，匹配到乡镇街道即完整显示）/ 订单号后四位（完全匹配）三个维度，任一命中即完整显示对方全部字段，用于核对是否为同一买家
+- **合并导出**：按当前搜索条件，把命中的他人记录合并导出为 CSV 下载
 
 ## 目录结构
 
@@ -19,13 +22,14 @@
 cms-trade/
 ├── public/                 # 前端（Pages 静态目录）
 │   ├── index.html          # 首页：帖子列表 / 搜索 / 导出
-│   ├── login.html          # 登录
+│   ├── login.html          # 登录（含管理员入口）
 │   ├── register.html       # 注册（手机验证码）
-│   ├── publish.html        # 发布 / 编辑交易记录
+│   ├── publish.html        # 发布 / 编辑交易记录（地址级联 + 自定义字段）
 │   ├── post.html           # 帖子详情
-│   ├── admin.html          # 后台管理（管理员）
+│   ├── admin.html          # 后台管理（用户/帖子/自定义字段/论坛板块）
 │   ├── settings.html       # 对外显示设置
-│   └── assets/             # api.js / style.css
+│   ├── forum.html          # 普通交流论坛
+│   └── assets/             # api.js / style.css / regions.js（行政区划数据）
 ├── functions/api/          # Pages Functions 后端接口
 │   ├── _utils.js           # 认证 / 密码哈希 / JWT 工具
 │   ├── send-code.js        # 发送验证码（mock / 阿里云 / 腾讯云）
@@ -36,9 +40,14 @@ cms-trade/
 │   ├── posts/[id].js       # 帖子详情 / 编辑 / 删除
 │   ├── settings.js         # 对外显示设置
 │   ├── export.js           # 合并导出 CSV
-│   └── admin/[...].js      # 后台管理
+│   ├── fields.js           # 公开自定义字段
+│   ├── admin/[...path].js  # 后台管理
+│   ├── admin/fields.js     # 自定义字段管理（管理员）
+│   ├── admin/fields/[id].js# 自定义字段编辑/删除（管理员）
+│   └── forum/              # 论坛接口（boards / topics / reply）
 ├── wrangler.toml           # Pages / D1 配置
-├── schema.sql              # 数据库表结构
+├── schema.sql              # 数据库表结构（全新库）
+├── migration.sql           # 已部署库迁移（v2 补齐）
 └── package.json
 ```
 
@@ -54,11 +63,13 @@ cms-trade/
 把 `wrangler.toml` 里的 `database_id = "YOUR_D1_DATABASE_ID"` 换成上一步复制的 ID。
 
 ### 4. 初始化表结构
-本地安装并登录 wrangler 后执行：
+本地安装并登录 wrangler 后执行。**全新数据库**执行 `schema.sql`（已含默认管理员和全部 v2 表）；**已部署过旧版的库**执行 `migration.sql` 补齐 v2：
 ```bash
 npm install -g wrangler
 wrangler login
-wrangler d1 execute cms-trade-db --file=./schema.sql --remote
+wrangler d1 execute cms-trade-db --file=./schema.sql --remote      # 全新库
+# 或（已部署旧库补齐 v2）：
+wrangler d1 execute cms-trade-db --file=./migration.sql --remote
 ```
 
 ### 5. 在 Cloudflare Pages 部署
@@ -75,8 +86,8 @@ Dashboard → **Workers & Pages → Create → Pages → Import from Git**：
 - `SECRET_KEY`：JWT 签名密钥，任意长随机串（如 `openssl rand -hex 32`）
 - `SMS_PROVIDER`：`mock`（默认）| `aliyun` | `tencent`
 
-### 7. 设置管理员
-第一个管理员用注册接口注册后，在 D1 手动提升：
+### 7. 管理员
+默认管理员账号 **`djmy` / 密码 `000000`**（建库时自动创建，登录页可一键填入）。如需把其他注册用户提升为管理员：
 ```sql
 UPDATE users SET role='admin' WHERE phone='你的手机号';
 ```

@@ -14,6 +14,7 @@
   <a class="link" href="publish.html">发布</a>
   <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
   <a class="link" href="settings.html">对外显示设置</a>
+  <a class="link" href="forum.html">交流论坛</a>
   <div class="spacer"></div>
   <span class="user-chip" id="nav-user"></span>
   <a class="link" id="nav-login" href="login.html">登录</a>
@@ -23,12 +24,12 @@
 <div class="container">
   <div class="search-bar card" style="padding:16px">
     <input id="name_exact" placeholder="买家姓名（完全匹配）">
-    <input id="address_exact" placeholder="收货地址（完全匹配）">
+    <input id="address_exact" placeholder="收货地址（输入省/市/区/街道关键词）">
     <input id="tracking4" placeholder="订单号后四位" maxlength="4">
     <button class="btn" id="btn-search">搜索他人记录</button>
     <button class="btn ghost" id="btn-export">导出命中的他人记录</button>
   </div>
-  <div class="hint blue">至少填写一项；只有<strong>完全匹配</strong>（姓名 / 地址 / 订单号后四位任一项相等）才会命中，并<strong>完整显示</strong>对方发布的记录。仅搜索他人发布的内容，不含你自己上传的记录。</div>
+  <div class="hint blue">至少填写一项。买家姓名、订单号后四位需<strong>完全匹配</strong>；收货地址为<strong>关键词包含匹配</strong>——输入省 / 市 / 区县 / 乡镇街道关键词，匹配到街道即<strong>完整显示</strong>对方发布的记录。仅搜索他人发布的内容，不含你自己上传的记录。</div>
   <div id="list"></div>
   <div id="pager" style="display:none;text-align:center;margin-top:12px">
     <button class="btn ghost" id="btn-prev">上一页</button>

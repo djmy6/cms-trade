@@ -1,6 +1,6 @@
 // /api/posts/[id]
 // GET 详情 | PUT 编辑(作者/管理员) | DELETE 删除(作者/管理员)
-import { json, error, readBody, authFromRequest } from './_utils.js';
+import { json, error, readBody, authFromRequest } from '../_utils.js';
 import { FIELDS } from '../posts.js';
 
 export const onRequestGet = async ({ env, request, params }) => {
@@ -38,12 +38,25 @@ export const onRequestPut = async ({ env, request, params }) => {
   const p = {};
   for (const f of FIELDS) p[f] = body[f] !== undefined ? String(body[f]).trim() : '';
   if (typeof p.refund_count === 'string') p.refund_count = parseInt(p.refund_count, 10) || 0;
+  const addrParts = ['address_province', 'address_city', 'address_district', 'address_street', 'address_detail']
+    .map((k) => String(body[k] || '').trim()).filter(Boolean);
+  if (addrParts.length) p.buyer_address = addrParts.join('');
+  const aProv = String(body.address_province || '').trim();
+  const aCity = String(body.address_city || '').trim();
+  const aDist = String(body.address_district || '').trim();
+  const aStreet = String(body.address_street || '').trim();
+  const aDetail = String(body.address_detail || '').trim();
+  const extra = {};
+  for (const k of Object.keys(body)) if (k.startsWith('cf_')) extra[k.slice(3)] = String(body[k] ?? '');
+  const extraJson = JSON.stringify(extra);
   await env.DB.prepare(
     `UPDATE posts SET platform=?, shop_name=?, item=?, amount=?, buyer_account=?, buyer_name=?,
-       buyer_real_phone=?, buyer_virtual_phone=?, buyer_address=?, tracking_no=?, refund_count=?, refund_amount=?
+       buyer_real_phone=?, buyer_virtual_phone=?, buyer_address=?, tracking_no=?, refund_count=?, refund_amount=?,
+       address_province=?, address_city=?, address_district=?, address_street=?, address_detail=?, extra_fields=?
      WHERE id=?`
   ).bind(p.platform, p.shop_name, p.item, p.amount, p.buyer_account, p.buyer_name,
-    p.buyer_real_phone, p.buyer_virtual_phone, p.buyer_address, p.tracking_no, p.refund_count, p.refund_amount, id).run();
+    p.buyer_real_phone, p.buyer_virtual_phone, p.buyer_address, p.tracking_no, p.refund_count, p.refund_amount,
+    aProv, aCity, aDist, aStreet, aDetail, extraJson, id).run();
   return json({ updated: true });
 };
 

@@ -50,6 +50,22 @@ const Api = {
   setRole: (id, role) => Api.put('/api/admin/users/' + id + '/role', { role }),
   deleteUser: (id) => Api.del('/api/admin/users/' + id),
 
+  // 自定义字段
+  fields: () => Api.get('/api/fields'),
+  adminFields: () => Api.get('/api/admin/fields'),
+  createField: (p) => Api.post('/api/admin/fields', p),
+  updateField: (id, p) => Api.put('/api/admin/fields/' + id, p),
+  deleteField: (id) => Api.del('/api/admin/fields/' + id),
+
+  // 论坛
+  boards: () => Api.get('/api/forum/boards'),
+  createBoard: (p) => Api.post('/api/forum/boards', p),
+  topics: (params) => Api.get('/api/forum/topics?' + new URLSearchParams(params)),
+  createTopic: (p) => Api.post('/api/forum/topics', p),
+  topic: (id) => Api.get('/api/forum/topics/' + id),
+  deleteTopic: (id) => Api.del('/api/forum/topics/' + id),
+  reply: (id, content) => Api.post('/api/forum/topics/' + id + '/reply', { content }),
+
   // 导出
   exportCsv: async (params) => {
     const r = await Api.req('POST', '/api/export', params);

@@ -43,7 +43,7 @@ export const onRequestGet = async ({ env, request }) => {
   const conds = [];
   const values = [];
   if (name) { conds.push('p.buyer_name = ?'); values.push(name); }
-  if (addr) { conds.push('p.buyer_address = ?'); values.push(addr); }
+  if (addr) { conds.push('p.buyer_address LIKE ?'); values.push('%' + addr + '%'); } // 地址：包含匹配（到街道级命中即完整显示）
   if (trk) { conds.push('substr(p.tracking_no, -4) = ?'); values.push(trk); }
   if (!conds.length) return error('请至少填写一项：买家姓名 / 收货地址 / 订单号后四位');
 
@@ -71,12 +71,32 @@ export const onRequestPost = async ({ env, request }) => {
   const p = {};
   for (const f of FIELDS) p[f] = body[f] !== undefined ? String(body[f]).trim() : '';
   if (typeof p.refund_count === 'string') p.refund_count = parseInt(p.refund_count, 10) || 0;
+
+  // v2 地址分段：若有分段则自动拼接为完整地址
+  const addrParts = ['address_province', 'address_city', 'address_district', 'address_street', 'address_detail']
+    .map((k) => String(body[k] || '').trim()).filter(Boolean);
+  if (addrParts.length) p.buyer_address = addrParts.join('');
+  const aProv = String(body.address_province || '').trim();
+  const aCity = String(body.address_city || '').trim();
+  const aDist = String(body.address_district || '').trim();
+  const aStreet = String(body.address_street || '').trim();
+  const aDetail = String(body.address_detail || '').trim();
+
+  // v2 自定义字段：cf_ 前缀的键存入 extra_fields JSON
+  const extra = {};
+  for (const k of Object.keys(body)) {
+    if (k.startsWith('cf_')) extra[k.slice(3)] = String(body[k] ?? '');
+  }
+  const extraJson = JSON.stringify(extra);
+
   if (!p.buyer_account && !p.shop_name && !p.item) return error('请至少填写 买家账号 / 店铺名称 / 购买物品 之一');
   const r = await env.DB.prepare(
     `INSERT INTO posts (user_id, platform, shop_name, item, amount, buyer_account, buyer_name,
-       buyer_real_phone, buyer_virtual_phone, buyer_address, tracking_no, refund_count, refund_amount)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       buyer_real_phone, buyer_virtual_phone, buyer_address, tracking_no, refund_count, refund_amount,
+       address_province, address_city, address_district, address_street, address_detail, extra_fields)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(user.id, p.platform, p.shop_name, p.item, p.amount, p.buyer_account, p.buyer_name,
-    p.buyer_real_phone, p.buyer_virtual_phone, p.buyer_address, p.tracking_no, p.refund_count, p.refund_amount).run();
+    p.buyer_real_phone, p.buyer_virtual_phone, p.buyer_address, p.tracking_no, p.refund_count, p.refund_amount,
+    aProv, aCity, aDist, aStreet, aDetail, extraJson).run();
   return json({ id: r.meta.last_row_id }, 201);
 };

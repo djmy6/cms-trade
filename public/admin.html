@@ -38,6 +38,34 @@
       <tbody id="posts-tbody"></tbody>
     </table></div>
   </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">自定义字段管理（发布页动态显示）</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="cf_label" placeholder="字段名称（如：退货原因）" style="flex:1;min-width:140px">
+      <input id="cf_key" placeholder="字段标识（如：return_reason）" style="flex:1;min-width:150px">
+      <select id="cf_type" style="width:110px"><option value="text">文本</option><option value="number">数字</option><option value="select">下拉</option><option value="textarea">多行</option></select>
+      <input id="cf_options" placeholder="下拉选项（逗号分隔）" style="flex:1;min-width:180px">
+      <button class="btn" id="btn-add-field">添加字段</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>名称</th><th>标识</th><th>类型</th><th>必填</th><th>启用</th><th>操作</th></tr></thead>
+      <tbody id="fields-tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px">论坛板块管理</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="board_name" placeholder="板块名称（如：交易求助）" style="flex:1;min-width:180px">
+      <input id="board_desc" placeholder="板块简介（可选）" style="flex:2;min-width:200px">
+      <button class="btn" id="btn-add-board">添加板块</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>名称</th><th>简介</th><th>主题数</th></tr></thead>
+      <tbody id="boards-tbody"></tbody>
+    </table></div>
+  </div>
 </div>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
@@ -99,8 +127,79 @@ async function delPost(id) {
   try { await Api.deletePost(id); toast('已删除'); loadPosts(); } catch (e) { toast(e.message, false); }
 }
 
+async function loadFields() {
+  const { list } = await Api.adminFields();
+  document.getElementById('fields-tbody').innerHTML = list.map((f) => `
+    <tr>
+      <td>${esc(f.label)}</td><td>${esc(f.field_key)}</td><td>${esc(f.field_type)}</td>
+      <td>${f.required ? '是' : '否'}</td>
+      <td><button class="btn-sm ghost" onclick="toggleField(${f.id},${f.active ? 0 : 1})">${f.active ? '停用' : '启用'}</button></td>
+      <td>
+        <button class="btn-sm ghost" onclick="editField(${f.id})">编辑</button>
+        <button class="btn-sm danger" onclick="deleteField(${f.id})">删除</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6">暂无自定义字段，可在上方添加（发布页会动态显示）</td></tr>';
+}
+document.getElementById('btn-add-field').onclick = async () => {
+  const label = document.getElementById('cf_label').value.trim();
+  const key = document.getElementById('cf_key').value.trim();
+  const type = document.getElementById('cf_type').value;
+  const options = document.getElementById('cf_options').value.trim();
+  if (!label || !key) return toast('请填写字段名称和标识', false);
+  try {
+    await Api.createField({ label, field_key: key, field_type: type, options, required: 0, sort_order: 0 });
+    toast('字段已添加');
+    ['cf_label', 'cf_key', 'cf_options'].forEach((i) => document.getElementById(i).value = '');
+    loadFields();
+  } catch (e) { toast(e.message, false); }
+};
+async function toggleField(id, active) {
+  const { list } = await Api.adminFields();
+  const f = list.find((x) => x.id === id);
+  if (!f) return;
+  try {
+    await Api.updateField(id, { label: f.label, field_key: f.field_key, field_type: f.field_type, options: f.options, required: f.required, sort_order: f.sort_order, active });
+    toast('已更新'); loadFields();
+  } catch (e) { toast(e.message, false); }
+}
+async function editField(id) {
+  const { list } = await Api.adminFields();
+  const f = list.find((x) => x.id === id);
+  if (!f) return;
+  const label = prompt('字段名称', f.label); if (label === null) return;
+  const type = prompt('类型(text/number/select/textarea)', f.field_type);
+  const options = prompt('下拉选项（逗号分隔）', f.options);
+  const required = confirm('该字段是否必填？') ? 1 : 0;
+  try {
+    await Api.updateField(id, { label, field_key: f.field_key, field_type: type, options, required, sort_order: f.sort_order, active: f.active });
+    toast('已保存'); loadFields();
+  } catch (e) { toast(e.message, false); }
+}
+async function deleteField(id) {
+  if (!confirm('删除该字段？已填写的该字段内容将不再显示。')) return;
+  try { await Api.deleteField(id); toast('已删除'); loadFields(); } catch (e) { toast(e.message, false); }
+}
+
+async function loadBoards() {
+  const { list } = await Api.boards();
+  document.getElementById('boards-tbody').innerHTML = list.map((b) => `
+    <tr><td>${b.id}</td><td>${esc(b.name)}</td><td>${esc(b.description || '-')}</td><td>${b.topic_count}</td></tr>`).join('') || '<tr><td colspan="4">暂无板块，可在上方添加</td></tr>';
+}
+document.getElementById('btn-add-board').onclick = async () => {
+  const name = document.getElementById('board_name').value.trim();
+  const desc = document.getElementById('board_desc').value.trim();
+  if (!name) return toast('请填写板块名称', false);
+  try {
+    await Api.createBoard({ name, description: desc });
+    toast('板块已添加');
+    document.getElementById('board_name').value = '';
+    document.getElementById('board_desc').value = '';
+    loadBoards();
+  } catch (e) { toast(e.message, false); }
+};
+
 renderNav();
-Promise.all([loadStats(), loadUsers(), loadPosts()]).catch((e) => {
+Promise.all([loadStats(), loadUsers(), loadPosts(), loadFields(), loadBoards()]).catch((e) => {
   if (e.message.includes('管理员')) toast('需要管理员权限', false);
   else if (e.message.includes('未登录')) location.href = 'login.html';
   else toast(e.message, false);
