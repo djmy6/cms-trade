@@ -57,7 +57,7 @@ export const onRequestPost = async ({ request, env }) => {
     const signName = env.ALIYUN_SMS_SIGN_NAME || env.ALIYUN_SIGN_NAME;
     const tplCode = env.ALIYUN_SMS_TEMPLATE_CODE || env.ALIYUN_TEMPLATE_CODE;
     if (!akId || !akSecret || !signName || !tplCode) return mockFallback(env, mockCode, phone, '阿里云短信未配置（AK/签名/模板缺一不可）');
-    const sent = await sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar: env.ALIYUN_SMS_CODE_VAR || 'code' });
+    const sent = await sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar: env.ALIYUN_SMS_CODE_VAR || 'code', minutes: Math.round((expiresAt - now) / 60000) });
     if (!sent) return mockFallback(env, mockCode, phone, '阿里云短信发送失败');
     return json({ sent: true, mode: 'aliyun' });
   }
@@ -85,14 +85,15 @@ function mockFallback(env, mockCode, phone, reason = '短信服务未配置或�
 }
 
 // ---------- 阿里云短信（短信服务 RPC，Dysmsapi 2017-05-25） ----------
-async function sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar = 'code' }) {
+async function sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar = 'code', minutes = 5 }) {
   try {
     const params = {
       AccessKeyId: akId, Action: 'SendSms', Format: 'JSON', RegionId: 'cn-hangzhou',
       SignatureMethod: 'HMAC-SHA1', SignatureNonce: crypto.randomUUID(),
       SignatureVersion: '1.0', Timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       Version: '2017-05-25', PhoneNumbers: phone, SignName: signName, TemplateCode: tplCode,
-      TemplateParam: JSON.stringify({ [codeVar]: code }),
+      // 模板可能含 code + min 两个变量，同时传入以保证参数匹配
+      TemplateParam: JSON.stringify({ [codeVar]: code, min: minutes }),
     };
     const sorted = Object.keys(params).sort();
     const qs = sorted.map((k) => `${percent(k)}=${percent(params[k])}`).join('&');
