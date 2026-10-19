@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   salt TEXT NOT NULL,
   name TEXT DEFAULT '',
   role TEXT DEFAULT 'user',          -- 'user' 普通用户 / 'admin' 管理员
+  email TEXT DEFAULT '',             -- 邮箱（v4，注册验证）
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
@@ -155,5 +156,19 @@ CREATE TABLE IF NOT EXISTS forum_admin_logs (
   detail TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
+
+-- 邮箱验证码表（v4，注册邮箱验证）
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  purpose TEXT DEFAULT 'register',      -- 'register'
+  used INTEGER DEFAULT 0,
+  expires_at INTEGER NOT NULL,          -- unix 毫秒时间戳
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 邮箱唯一（部分索引，避免空串冲突）
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != '';
 
 -- 提示：已部署的数据库（posts 表已存在）需执行 migration.sql 补充 posts 表 v2 列

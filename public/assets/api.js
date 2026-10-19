@@ -30,8 +30,12 @@ const Api = {
 
   // 认证
   sendCode: (phone, purpose) => Api.post('/api/send-code', { phone, purpose }),
+  sendEmailCode: (email, purpose) => Api.post('/api/send-email-code', { email, purpose }),
+  pnsAuth: () => Api.post('/api/pns/auth', {}),
+  pnsPhone: (spToken) => Api.post('/api/pns/phone', { spToken }),
   register: (payload) => Api.post('/api/register', payload),
   login: (phone, password) => Api.post('/api/login', { phone, password }),
+  changePassword: (old_password, new_password) => Api.put('/api/me/password', { old_password, new_password }),
   me: () => Api.get('/api/me'),
 
   // 帖子

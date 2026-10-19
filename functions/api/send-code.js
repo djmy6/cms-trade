@@ -49,13 +49,16 @@ export const onRequestPost = async ({ request, env }) => {
     return json({ sent: true, mode: 'mock', devCode: mockCode, msg: '开发模式：验证码为 ' + mockCode });
   }
 
-  // --- 阿里云短信 ---
+  // --- 阿里云短信（短信服务 SendSms，dysmsapi） ---
   if (provider === 'aliyun') {
-    const akId = env.ALIYUN_ACCESS_KEY_ID, akSecret = env.ALIYUN_ACCESS_KEY_SECRET;
-    const signName = env.ALIYUN_SIGN_NAME, tplCode = env.ALIYUN_TEMPLATE_CODE;
-    if (!akId || !akSecret || !signName || !tplCode) return mockFallback(env, mockCode, phone);
-    const sent = await sendAliyun({ akId, akSecret, signName, tplCode, phone, code });
-    if (!sent) return mockFallback(env, mockCode, phone);
+    // AccessKey 支持两套命名：优先专用短信 AK，否则复用号码认证那组（ALIYUN_PNVS_AK_*）
+    const akId = env.ALIYUN_ACCESS_KEY_ID || env.ALIYUN_PNVS_AK_ID;
+    const akSecret = env.ALIYUN_ACCESS_KEY_SECRET || env.ALIYUN_PNVS_AK_SECRET;
+    const signName = env.ALIYUN_SMS_SIGN_NAME || env.ALIYUN_SIGN_NAME;
+    const tplCode = env.ALIYUN_SMS_TEMPLATE_CODE || env.ALIYUN_TEMPLATE_CODE;
+    if (!akId || !akSecret || !signName || !tplCode) return mockFallback(env, mockCode, phone, '阿里云短信未配置（AK/签名/模板缺一不可）');
+    const sent = await sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar: env.ALIYUN_SMS_CODE_VAR || 'code' });
+    if (!sent) return mockFallback(env, mockCode, phone, '阿里云短信发送失败');
     return json({ sent: true, mode: 'aliyun' });
   }
 
@@ -72,24 +75,24 @@ export const onRequestPost = async ({ request, env }) => {
   return mockFallback(env, mockCode, phone);
 };
 
-function mockFallback(env, mockCode, phone) {
+function mockFallback(env, mockCode, phone, reason = '短信服务未配置或发送失败') {
   // 短信服务未正确配置 → 回退 mock 并提示
   return json({
     sent: true, mode: 'mock',
     devCode: mockCode,
-    msg: '短信服务未配置或发送失败，已回退开发验证码：' + mockCode,
+    msg: reason + '，已回退开发验证码：' + mockCode,
   });
 }
 
 // ---------- 阿里云短信（短信服务 RPC，Dysmsapi 2017-05-25） ----------
-async function sendAliyun({ akId, akSecret, signName, tplCode, phone, code }) {
+async function sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar = 'code' }) {
   try {
     const params = {
       AccessKeyId: akId, Action: 'SendSms', Format: 'JSON', RegionId: 'cn-hangzhou',
       SignatureMethod: 'HMAC-SHA1', SignatureNonce: crypto.randomUUID(),
       SignatureVersion: '1.0', Timestamp: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
       Version: '2017-05-25', PhoneNumbers: phone, SignName: signName, TemplateCode: tplCode,
-      TemplateParam: JSON.stringify({ code }),
+      TemplateParam: JSON.stringify({ [codeVar]: code }),
     };
     const sorted = Object.keys(params).sort();
     const qs = sorted.map((k) => `${percent(k)}=${percent(params[k])}`).join('&');

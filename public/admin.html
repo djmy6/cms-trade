@@ -42,6 +42,15 @@
       <h3 style="margin-bottom:12px">论坛数据</h3>
       <div class="stat-grid" id="forum-stats"></div>
     </div>
+    <div class="card" style="margin-top:14px">
+      <h3 style="margin-bottom:12px">修改密码</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="old_password" type="password" placeholder="当前密码" style="flex:1;min-width:150px">
+        <input id="new_password" type="password" placeholder="新密码（至少 6 位）" style="flex:1;min-width:170px">
+        <input id="confirm_password" type="password" placeholder="确认新密码" style="flex:1;min-width:150px">
+        <button class="btn" id="btn-change-pwd">保存新密码</button>
+      </div>
+    </div>
   </div>
 
   <div class="pane" id="pane-users">
@@ -272,6 +281,18 @@ async function loadFields() {
       <td><button class="btn-sm ghost" onclick="editField(${f.id})">编辑</button>
         <button class="btn-sm danger" onclick="deleteField(${f.id})">删除</button></td></tr>`).join('') || '<tr><td colspan="6">暂无自定义字段</td></tr>';
 }
+document.getElementById('btn-change-pwd').onclick = async () => {
+  const oldp = document.getElementById('old_password').value;
+  const newp = document.getElementById('new_password').value;
+  const cfm = document.getElementById('confirm_password').value;
+  if (!oldp || !newp) return toast('请填写当前密码和新密码', false);
+  if (newp !== cfm) return toast('两次输入的新密码不一致', false);
+  try {
+    await Api.changePassword(oldp, newp);
+    toast('密码已修改，下次登录请用新密码');
+    ['old_password', 'new_password', 'confirm_password'].forEach((i) => document.getElementById(i).value = '');
+  } catch (e) { toast(e.message, false); }
+};
 document.getElementById('btn-add-field').onclick = async () => {
   const label = document.getElementById('cf_label').value.trim();
   const key = document.getElementById('cf_key').value.trim();

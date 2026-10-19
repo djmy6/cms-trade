@@ -248,7 +248,70 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ---
 
-## 13. 常见问题（FAQ）
+## 13. 邮箱验证码（SendGrid）
+
+注册**强制验证邮箱**：注册时除手机号验证码外，还须填写邮箱并接收邮箱验证码，**两者都通过**才能注册成功。
+
+默认（未配置 `SENDGRID_API_KEY`）为开发模式：注册页直接回显测试邮箱验证码（`654321`），适合先跑通。
+
+要真正发验证邮件：到 SendGrid（https://sendgrid.com）注册，创建 API Key，并验证发件身份（Sender Authentication），然后配置（Pages 项目 **Settings → Environment variables → Production**）：
+
+| 变量 | 值 | 说明 |
+|---|---|---|
+| `SENDGRID_API_KEY` | `SG.xxxxx` | SendGrid API Key（需 Mail Send 权限） |
+| `SENDGRID_FROM` | `noreply@你的域名.com` | 发件邮箱（需在 SendGrid 验证的发件身份） |
+| `SENDGRID_FROM_NAME` | `交易记录CMS` | 发件人显示名 |
+
+> 配置好后保存并 **Retry deployment**。未配置或发送失败时自动回退开发模式（回显测试码）。
+
+---
+
+## 14. 阿里云号码认证：本机号码一键登录
+
+登录/注册页顶部提供「本机号码一键登录」，用户授权后运营商直接返回本机手机号，**免填手机号+验证码**（未注册自动注册）。使用阿里云号码认证服务（PNVS）。
+
+前提：
+1. 阿里云控制台开通「号码认证服务」，创建 H5 一键登录**认证方案**，拿到**方案 Code（SceneCode）**，并在方案里填写页面地址/源地址（`https://cms-trade.pages.dev/` 与 `https://cms-trade.pages.dev`）
+2. 获取阿里云 AccessKey（主账号或 RAM 子账号，授予 `dypns:GetAuthToken`、`dypns:GetPhoneWithToken` 权限）
+
+配置环境变量（Pages 项目 **Settings → Environment variables → Production**）：
+
+| 变量 | 值 | 说明 |
+|---|---|---|
+| `ALIYUN_PNVS_AK_ID` | 阿里云 AccessKeyId | 服务端调 OpenAPI 用 |
+| `ALIYUN_PNVS_AK_SECRET` | 阿里云 AccessKeySecret |  |
+| `ALIYUN_PNVS_SCENE_CODE` | `FC100000xxxx` | 认证方案 Code |
+| `ALIYUN_PNVS_URL` | `https://cms-trade.pages.dev/` | 页面地址（须与控制台方案一致） |
+| `ALIYUN_PNVS_ORIGIN` | `https://cms-trade.pages.dev` | 源地址（须与控制台方案一致） |
+| `ALIYUN_PNVS_REGION` | `cn-hangzhou` | 可选，默认 cn-hangzhou |
+
+> 一键登录是**补充**登录方式，可与手机号密码、短信/邮箱验证码并存。本机号码认证要求用户开启移动数据网络（需关闭 Wi-Fi）。配置好后保存并 **Retry deployment**。AccessKey 未配置时，「一键登录」按钮会提示配置错误。
+
+---
+
+## 15. 短信验证码（阿里云短信服务）
+
+注册/登录的「获取短信验证码」默认是**开发 mock**（页面直接回显测试码）。要真实发送短信验证码，使用阿里云**短信服务 SendSms**：
+
+1. 阿里云短信服务已开通，并已申请（或使用赠送）**验证码签名**与**验证码模板**，模板内容例如「验证码为 `${code}`，5 分钟内有效」；
+2. 获取 AccessKey（可与号码认证共用同一组）。
+
+配置环境变量（Pages 项目 **Settings → Environment variables → Production**）：
+
+| 变量 | 值 | 说明 |
+|---|---|---|
+| `SMS_PROVIDER` | `aliyun` | 开启阿里云短信真发（默认 `mock`） |
+| `ALIYUN_ACCESS_KEY_ID` | AccessKeyId | 可只配号码认证的 `ALIYUN_PNVS_AK_ID`（自动复用） |
+| `ALIYUN_ACCESS_KEY_SECRET` | AccessKeySecret | 或 `ALIYUN_PNVS_AK_SECRET` |
+| `ALIYUN_SMS_SIGN_NAME` | `恒创联众` | 短信签名（短信认证参数配置→签名配置里查看） |
+| `ALIYUN_SMS_TEMPLATE_CODE` | `SMS_2xxxxxxx` | 验证码模板 Code（模板配置页复制） |
+| `ALIYUN_SMS_CODE_VAR` | `code` | 模板里的验证码变量名，默认 `code` |
+
+> 配置后保存并 **Retry deployment**。未配置或发送失败会自动回退 mock 并回显测试码，不影响注册/登录。短信验证码与号码认证一键登录可并存：一键登录免验证码，短信验证码作为手动填写通道。
+
+---
+
+## 16. 常见问题（FAQ）
 
 | 现象 | 原因 / 解决 |
 |---|---|

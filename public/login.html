@@ -11,6 +11,8 @@
 <div class="auth-wrap">
   <div class="card">
     <div class="auth-title"><h1>登录</h1><p>使用手机号和密码登录</p></div>
+    <button class="btn block" id="btn-one-click" style="background:linear-gradient(90deg,#10b981,#059669)">本机号码一键登录</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#999;font-size:13px"><span style="flex:1;height:1px;background:#eee"></span>或<span style="flex:1;height:1px;background:#eee"></span></div>
     <div class="form-group">
       <label>手机号</label>
       <input id="phone" placeholder="11 位手机号" inputmode="numeric">
@@ -21,19 +23,39 @@
     </div>
     <button class="btn block" id="btn-login">登 录</button>
     <p style="text-align:center;margin-top:14px;font-size:13px">还没有账号？<a href="register.html">去注册</a></p>
-    <div class="hint blue" style="margin-top:16px">
-      管理员入口：账号 <b>djmy</b> · 密码 <b>000000</b>（管理员登录后可进入后台管理）
-      <button class="btn-sm ghost" id="btn-admin-fill" style="margin-left:6px">一键填入</button>
-    </div>
   </div>
 </div>
 <div id="toast"></div>
+<script src="assets/numberAuth-web-sdk.js"></script>
 <script src="assets/api.js"></script>
 <script>
-document.getElementById('btn-admin-fill').onclick = () => {
-  document.getElementById('phone').value = 'djmy';
-  document.getElementById('password').value = '000000';
-};
+function oneClickLogin() {
+  if (!window.PhoneNumberServer) return toast('认证 SDK 未加载，请使用手机号密码登录', false);
+  Api.pnsAuth().then((a) => {
+    const pns = new window.PhoneNumberServer();
+    pns.checkLoginAvailable({
+      accessToken: a.accessToken,
+      jwtToken: a.jwtToken,
+      success: () => {
+        pns.getLoginToken({
+          authPageOption: { btnText: '一键登录', isDialog: true, manualClose: true, navText: '本机号码登录' },
+          success: async (res) => {
+            if (res.code !== 600000) return toast('一键登录失败，请重试', false);
+            try { pns.closeLoginPage(); } catch (e) {}
+            const rr = await Api.pnsPhone(res.spToken);
+            Api.setSession(rr.token, rr.user);
+            toast('登录成功');
+            setTimeout(() => location.href = 'index.html', 500);
+          },
+          error: () => toast('一键登录失败，请关闭 Wi-Fi 或使用手机号密码登录', false),
+        });
+      },
+      error: () => toast('认证失败，请使用手机号密码登录', false),
+    });
+  }).catch((e) => toast(e.message, false));
+}
+document.getElementById('btn-one-click').onclick = oneClickLogin;
+
 document.getElementById('btn-login').onclick = async () => {
   const phone = document.getElementById('phone').value.trim();
   const password = document.getElementById('password').value;

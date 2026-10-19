@@ -10,19 +10,33 @@
 <body>
 <div class="auth-wrap">
   <div class="card">
-    <div class="auth-title"><h1>注册账号</h1><p>手机号接收验证码核验</p></div>
+    <div class="auth-title"><h1>注册账号</h1><p>手机号 + 邮箱接收验证码核验</p></div>
+    <button class="btn block" id="btn-one-click" style="background:linear-gradient(90deg,#10b981,#059669)">本机号码一键登录/注册</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#999;font-size:13px"><span style="flex:1;height:1px;background:#eee"></span>或<span style="flex:1;height:1px;background:#eee"></span></div>
     <div class="hint blue" id="sms-hint" style="display:none"></div>
     <div class="form-group">
       <label>手机号</label>
       <input id="phone" placeholder="11 位手机号" inputmode="numeric">
     </div>
     <div class="form-group">
-      <label>验证码</label>
+      <label>短信验证码</label>
       <div class="code-row">
         <input id="code" placeholder="6 位验证码" inputmode="numeric">
         <button class="btn ghost" id="btn-code">获取验证码</button>
       </div>
     </div>
+    <div class="form-group">
+      <label>邮箱</label>
+      <input id="email" placeholder="你的邮箱（用于接收验证码）">
+    </div>
+    <div class="form-group">
+      <label>邮箱验证码</label>
+      <div class="code-row">
+        <input id="emailCode" placeholder="6 位邮箱验证码" inputmode="numeric">
+        <button class="btn ghost" id="btn-email-code">获取邮箱验证码</button>
+      </div>
+    </div>
+    <div class="hint blue" id="email-hint" style="display:none"></div>
     <div class="form-group">
       <label>密码（至少 6 位）</label>
       <input id="password" type="password" placeholder="设置登录密码">
@@ -36,10 +50,41 @@
   </div>
 </div>
 <div id="toast"></div>
+<script src="assets/numberAuth-web-sdk.js"></script>
 <script src="assets/api.js"></script>
 <script>
+function oneClickLogin() {
+  if (!window.PhoneNumberServer) return toast('认证 SDK 未加载，请使用手机号验证码注册', false);
+  Api.pnsAuth().then((a) => {
+    const pns = new window.PhoneNumberServer();
+    pns.checkLoginAvailable({
+      accessToken: a.accessToken,
+      jwtToken: a.jwtToken,
+      success: () => {
+        pns.getLoginToken({
+          authPageOption: { btnText: '登录/注册', isDialog: true, manualClose: true, navText: '本机号码登录' },
+          success: async (res) => {
+            if (res.code !== 600000) return toast('一键认证失败，请重试', false);
+            try { pns.closeLoginPage(); } catch (e) {}
+            const rr = await Api.pnsPhone(res.spToken);
+            Api.setSession(rr.token, rr.user);
+            toast('登录成功');
+            setTimeout(() => location.href = 'index.html', 500);
+          },
+          error: () => toast('一键认证失败，请关闭 Wi-Fi 或使用手机号验证码注册', false),
+        });
+      },
+      error: () => toast('认证失败，请使用手机号验证码注册', false),
+    });
+  }).catch((e) => toast(e.message, false));
+}
+document.getElementById('btn-one-click').onclick = oneClickLogin;
+
 const btnCode = document.getElementById('btn-code');
 let countdown = 0;
+const btnEmailCode = document.getElementById('btn-email-code');
+let emailCountdown = 0;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function sendCode() {
   const phone = document.getElementById('phone').value.trim();
@@ -67,13 +112,42 @@ function tick() {
 }
 btnCode.onclick = sendCode;
 
+async function sendEmailCode() {
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return toast('请输入正确的邮箱', false);
+  try {
+    const r = await Api.sendEmailCode(email, 'register');
+    const hint = document.getElementById('email-hint');
+    if (r.mode === 'mock') {
+      hint.style.display = '';
+      hint.innerHTML = '当前为<strong>开发模式</strong>，未接入 SendGrid。<br>测试邮箱验证码：<strong>' + esc(r.devCode || r.msg) + '</strong>';
+      document.getElementById('emailCode').value = r.devCode || '';
+    } else {
+      hint.style.display = '';
+      hint.innerHTML = '验证码已发送至 ' + esc(email) + '，请查收邮件';
+    }
+    toast('邮箱验证码已发送');
+    emailCountdown = 60;
+    emailTick();
+  } catch (e) { toast(e.message, false); }
+}
+function emailTick() {
+  btnEmailCode.disabled = emailCountdown > 0;
+  btnEmailCode.textContent = emailCountdown > 0 ? emailCountdown + 's' : '获取邮箱验证码';
+  if (emailCountdown > 0) { emailCountdown--; setTimeout(emailTick, 1000); }
+}
+btnEmailCode.onclick = sendEmailCode;
+
 document.getElementById('btn-register').onclick = async () => {
   const phone = document.getElementById('phone').value.trim();
   const code = document.getElementById('code').value.trim();
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const emailCode = document.getElementById('emailCode').value.trim();
   const password = document.getElementById('password').value;
   const name = document.getElementById('name').value.trim();
+  if (!EMAIL_RE.test(email)) return toast('请输入正确的邮箱', false);
   try {
-    const r = await Api.register({ phone, code, password, name });
+    const r = await Api.register({ phone, code, email, emailCode, password, name });
     Api.setSession(r.token, r.user);
     toast('注册成功');
     setTimeout(() => location.href = 'index.html', 500);

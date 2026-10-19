@@ -105,3 +105,21 @@ CREATE TABLE IF NOT EXISTS forum_admin_logs (
   detail TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
+
+-- ===== v4：注册邮箱验证（2026-10）=====
+-- 用户表加邮箱列
+ALTER TABLE users ADD COLUMN email TEXT DEFAULT '';
+
+-- 邮箱验证码表
+CREATE TABLE IF NOT EXISTS email_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  purpose TEXT DEFAULT 'register',
+  used INTEGER DEFAULT 0,
+  expires_at INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 邮箱唯一（部分索引，避免空串冲突）
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != '';
