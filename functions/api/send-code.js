@@ -58,7 +58,7 @@ export const onRequestPost = async ({ request, env }) => {
     const tplCode = env.ALIYUN_SMS_TEMPLATE_CODE || env.ALIYUN_TEMPLATE_CODE;
     if (!akId || !akSecret || !signName || !tplCode) return mockFallback(env, mockCode, phone, '阿里云短信未配置（AK/签名/模板缺一不可）');
     const sent = await sendAliyun({ akId, akSecret, signName, tplCode, phone, code, codeVar: env.ALIYUN_SMS_CODE_VAR || 'code', minutes: Math.round((expiresAt - now) / 60000) });
-    if (!sent) return mockFallback(env, mockCode, phone, '阿里云短信发送失败');
+    if (!sent.ok) return mockFallback(env, mockCode, phone, '阿里云短信发送失败：' + (sent.message || ''));
     return json({ sent: true, mode: 'aliyun' });
   }
 
@@ -104,8 +104,11 @@ async function sendAliyun({ akId, akSecret, signName, tplCode, phone, code, code
     const url = 'https://dysmsapi.aliyuncs.com/?' + qs + '&Signature=' + signature;
     const resp = await fetch(url, { method: 'POST' });
     const r = await resp.json();
-    return r.Code === 'OK';
-  } catch { return false; }
+    if (r.Code === 'OK') return { ok: true };
+    return { ok: false, message: (r.Message || r.Code || '未知错误') };
+  } catch (e) {
+    return { ok: false, message: '请求异常' + (e && e.message ? '：' + e.message : '') };
+  }
 }
 function enc(s) { return new TextEncoder().encode(s); }
 function percent(s) {
