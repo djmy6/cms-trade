@@ -4,6 +4,7 @@
 //   SENDGRID_API_KEY 已配置 → 通过 SendGrid API 发送验证邮件
 //   未配置（开发模式）→ 不真正发送，直接返回测试验证码
 import { json, error, readBody } from './_utils.js';
+import { readSiteConfig } from './site-config.js';
 
 function genCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -24,17 +25,21 @@ export const onRequestPost = async ({ request, env }) => {
     if (results.length) return error('该邮箱已注册，请直接登录');
   }
 
-  // 限流：同一邮箱 60 秒内只能发一次
+  const cfg = await readSiteConfig(env);
+  const emailExpireMin = Math.max(1, parseInt(cfg.email_code_expire_min, 10) || 5);
+  const resendSec = Math.max(10, parseInt(cfg.code_resend_seconds, 10) || 45);
+
+  // 限流：同一邮箱在重发间隔内只能发一次
   const now = Date.now();
   const recent = await env.DB.prepare(
     'SELECT expires_at FROM email_codes WHERE email = ? AND used = 0 ORDER BY id DESC LIMIT 1'
   ).bind(email).all();
-  if (recent.results[0] && recent.results[0].expires_at > now - 45000) {
+  if (recent.results[0] && recent.results[0].expires_at > now - resendSec * 1000) {
     return error('发送太频繁，请稍后再试');
   }
 
   const code = genCode();
-  const expiresAt = now + 5 * 60 * 1000; // 5 分钟有效
+  const expiresAt = now + emailExpireMin * 60 * 1000; // 有效期可配置
   await env.DB.prepare(
     'INSERT INTO email_codes (email, code, purpose, used, expires_at) VALUES (?, ?, ?, 0, ?)'
   ).bind(email, code, purpose, expiresAt).run();

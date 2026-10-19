@@ -49,6 +49,11 @@ const Api = {
   settings: () => Api.get('/api/settings'),
   saveSettings: (s) => Api.put('/api/settings', s),
 
+  // 注册/登录配置（site_config）
+  siteConfig: () => Api.get('/api/site-config'),
+  adminConfig: () => Api.get('/api/admin/config'),
+  updateAdminConfig: (c) => Api.put('/api/admin/config', c),
+
   // 后台
   admin: (seg) => Api.get('/api/admin/' + seg),
   setRole: (id, role) => Api.put('/api/admin/users/' + id + '/role', { role }),

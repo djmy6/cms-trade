@@ -172,3 +172,18 @@ CREATE TABLE IF NOT EXISTS email_codes (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL AND email != '';
 
 -- 提示：已部署的数据库（posts 表已存在）需执行 migration.sql 补充 posts 表 v2 列
+
+-- ===== v5.1：注册/登录开关配置（2026-10）=====
+CREATE TABLE IF NOT EXISTS site_config (
+  key TEXT PRIMARY KEY,
+  value TEXT DEFAULT '',
+  updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+INSERT OR IGNORE INTO site_config (key, value) VALUES
+  ('phone_register_enabled','1'),
+  ('email_register_enabled','1'),
+  ('one_click_login_enabled','1'),
+  ('require_email','1'),
+  ('sms_code_expire_min','5'),
+  ('email_code_expire_min','5'),
+  ('code_resend_seconds','45');

@@ -171,6 +171,26 @@
       </table></div>
     </div>
   </div>
+
+  <div class="pane" id="pane-config">
+    <div class="card">
+      <h3 style="margin-bottom:12px">注册/登录配置</h3>
+      <div style="margin-bottom:10px;font-size:13px;color:#666">主开关：控制登录/注册页使用哪种验证方式</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="cfg-phone" style="width:18px;height:18px"> <b>手机注册验证登录</b><span style="color:#888">（手机号 + 短信验证码必填校验）</span></label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="cfg-email" style="width:18px;height:18px"> <b>邮箱注册验证登录</b><span style="color:#888">（邮箱 + 邮箱验证码）</span></label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="cfg-onclick" style="width:18px;height:18px"> <b>本机号码一键登录</b><span style="color:#888">（免验证码，登录/注册页显示绿色按钮）</span></label>
+      </div>
+      <h3 style="margin-bottom:10px">详细配置修改</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="cfg-require-email" style="width:18px;height:18px"> 注册强制邮箱（邮箱必填）</label>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">短信验证码有效期：<input type="number" id="cfg-sms-expire" min="1" style="width:90px"> 分钟</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">邮箱验证码有效期：<input type="number" id="cfg-email-expire" min="1" style="width:90px"> 分钟</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">验证码重发间隔：<input type="number" id="cfg-resend" min="10" style="width:90px"> 秒</div>
+      </div>
+      <button class="btn" id="btn-save-config">保存配置</button>
+    </div>
+  </div>
 </div>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
@@ -189,7 +209,7 @@ function renderNav() {
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
 
 function tabs() {
-  const def = [['overview', '概览'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
+  const def = [['overview', '概览'], ['config', '登录注册'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
   if (!['admin', 'supermod', 'moderator'].includes(role)) { document.getElementById('tabs').innerHTML = '<div style="color:#cf1322">你无权访问后台管理</div>'; return; }
   const limited = role === 'moderator';
   const show = def.filter(([k]) => !limited || (k === 'overview' || k === 'topics' || k === 'replies'));
@@ -197,7 +217,7 @@ function tabs() {
   document.getElementById('tabs').querySelectorAll('.tab-btn').forEach((b) => { b.onclick = () => showTab(b.getAttribute('data-tab')); });
   loadOverview();
   if (limited) { loadModTopicOptions(); loadTopicList(); }
-  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices()]).catch((e) => toast(e.message, false)); }
+  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig()]).catch((e) => toast(e.message, false)); }
 }
 
 function showTab(name) {
@@ -211,6 +231,7 @@ function showTab(name) {
   else if (name === 'replies') loadReplyList();
   else if (name === 'banned') loadBanned();
   else if (name === 'notices') loadNotices();
+  else if (name === 'config') loadConfig();
   else if (name === 'overview') loadOverview();
 }
 
@@ -443,6 +464,34 @@ async function loadModTopicOptions() {
   document.getElementById('t_board').innerHTML = '<option value="">全部板块</option>' + [].concat(boards || [], (boards || []).flatMap((b) => b.children || [])).map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
   topicOptionsLoaded = true;
 }
+
+async function loadConfig() {
+  try {
+    const { config } = await Api.adminConfig();
+    document.getElementById('cfg-phone').checked = config.phone_register_enabled !== '0';
+    document.getElementById('cfg-email').checked = config.email_register_enabled !== '0';
+    document.getElementById('cfg-onclick').checked = config.one_click_login_enabled !== '0';
+    document.getElementById('cfg-require-email').checked = config.require_email !== '0';
+    document.getElementById('cfg-sms-expire').value = config.sms_code_expire_min || 5;
+    document.getElementById('cfg-email-expire').value = config.email_code_expire_min || 5;
+    document.getElementById('cfg-resend').value = config.code_resend_seconds || 45;
+  } catch (e) { toast(e.message, false); }
+}
+document.getElementById('btn-save-config').onclick = async () => {
+  try {
+    const c = {
+      phone_register_enabled: document.getElementById('cfg-phone').checked ? '1' : '0',
+      email_register_enabled: document.getElementById('cfg-email').checked ? '1' : '0',
+      one_click_login_enabled: document.getElementById('cfg-onclick').checked ? '1' : '0',
+      require_email: document.getElementById('cfg-require-email').checked ? '1' : '0',
+      sms_code_expire_min: document.getElementById('cfg-sms-expire').value,
+      email_code_expire_min: document.getElementById('cfg-email-expire').value,
+      code_resend_seconds: document.getElementById('cfg-resend').value,
+    };
+    await Api.updateAdminConfig(c);
+    toast('注册/登录配置已保存');
+  } catch (e) { toast(e.message, false); }
+};
 
 renderNav();
 if (!Api.user) { location.href = 'login.html'; }
