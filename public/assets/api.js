@@ -94,6 +94,30 @@ const Api = {
   deleteNotice: (id) => Api.del('/api/admin/forum/notices/' + id),
   forumStats: () => Api.get('/api/admin/forum/stats'),
 
+  // 互动 v6
+  voteTopic: (id, value) => Api.post('/api/forum/topics/' + id + '/vote', { value }),
+  favoriteTopic: (id) => Api.post('/api/forum/topics/' + id + '/favorite'),
+  reportTopic: (id, reason) => Api.post('/api/forum/topics/' + id + '/report', { reason }),
+  hot: () => Api.get('/api/forum/hot'),
+  // 成长
+  myStats: () => Api.get('/api/me/stats'),
+  sign: () => Api.post('/api/me/stats', {}),
+  updateProfile: (p) => Api.put('/api/me/profile', p),
+  userProfile: (id) => Api.get('/api/users/' + id),
+  myFavorites: () => Api.get('/api/me/favorites'),
+  // 社交
+  notifications: () => Api.get('/api/me/notifications'),
+  messages: () => Api.get('/api/me/messages'),
+  sendMessage: (to_user, content) => Api.post('/api/me/messages', { to_user, content }),
+  readMessages: (ids) => Api.put('/api/me/messages', { ids }),
+  mentions: () => Api.get('/api/me/mentions'),
+  readMentions: (ids) => Api.put('/api/me/mentions', { ids }),
+  follow: (user_id) => Api.post('/api/me/follow', { user_id }),
+  myFollowing: () => Api.get('/api/me/follow'),
+  // 后台举报
+  adminReports: () => Api.get('/api/admin/forum/reports'),
+  handleReport: (id, body) => Api.put('/api/admin/forum/reports/' + id, body),
+
   // 角色标签
   roleLabel: (r) => ({ admin: '管理员', supermod: '超级版主', moderator: '版主', user: '用户', banned: '禁言' }[r] || r || '用户'),
 

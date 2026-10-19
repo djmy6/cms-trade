@@ -25,11 +25,16 @@
   <span class="brand">交易记录 CMS</span>
   <a class="link" href="index.html">首页</a>
   <a class="link" href="publish.html">发布</a>
-  <a class="link" href="admin.html">后台管理</a>
-  <a class="link" href="settings.html">对外显示设置</a>
+  <a class="link" href="admin.html" style="color:var(--primary);background:var(--primary-soft)">后台</a>
+  <a class="link" href="settings.html">设置</a>
+  <a class="link" href="forum.html">论坛</a>
   <div class="spacer"></div>
-  <span class="user-chip" id="nav-user"></span>
-  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+  <div class="nav-actions">
+    <button class="icon-btn" id="theme-toggle" title="夜间/日间">🌓</button>
+    <span class="user-chip" id="nav-user"></span>
+    <a class="link" id="nav-login" href="login.html">登录</a>
+    <a class="link" id="nav-logout" href="#" style="display:none">退出</a>
+  </div>
 </div></nav>
 
 <div class="container">
@@ -191,9 +196,25 @@
       <button class="btn" id="btn-save-config">保存配置</button>
     </div>
   </div>
+
+  <div class="pane" id="pane-reports">
+    <div class="card">
+      <h3 style="margin-bottom:12px">举报管理（待处理 <b id="rep-pending">0</b> 条）</h3>
+      <div id="report-list"></div>
+    </div>
+  </div>
 </div>
+<button class="back-top" id="back-top">↑</button>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
+<script>
+function applyTheme(){ document.documentElement.classList.toggle('dark', localStorage.getItem('cms_theme') === 'dark'); }
+applyTheme();
+document.getElementById('theme-toggle').onclick = () => { const d = document.documentElement.classList.toggle('dark'); localStorage.setItem('cms_theme', d ? 'dark' : 'light'); };
+const bt = document.getElementById('back-top');
+window.addEventListener('scroll', () => bt.classList.toggle('show', window.scrollY > 300));
+bt.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+</script>
 <script>
 let role = (Api.user || {}).role || '';
 let topicPage = 1, replyPage = 1;
@@ -204,12 +225,13 @@ function renderNav() {
   if (u) {
     document.getElementById('nav-user').textContent = (u.name || u.phone) + ' · ' + Api.roleLabel(u.role);
     document.getElementById('nav-logout').style.display = '';
+    document.getElementById('nav-login').style.display = 'none';
   }
 }
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
 
 function tabs() {
-  const def = [['overview', '概览'], ['config', '登录注册'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
+  const def = [['overview', '概览'], ['config', '登录注册'], ['reports', '举报'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
   if (!['admin', 'supermod', 'moderator'].includes(role)) { document.getElementById('tabs').innerHTML = '<div style="color:#cf1322">你无权访问后台管理</div>'; return; }
   const limited = role === 'moderator';
   const show = def.filter(([k]) => !limited || (k === 'overview' || k === 'topics' || k === 'replies'));
@@ -217,7 +239,7 @@ function tabs() {
   document.getElementById('tabs').querySelectorAll('.tab-btn').forEach((b) => { b.onclick = () => showTab(b.getAttribute('data-tab')); });
   loadOverview();
   if (limited) { loadModTopicOptions(); loadTopicList(); }
-  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig()]).catch((e) => toast(e.message, false)); }
+  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig(), loadReports()]).catch((e) => toast(e.message, false)); }
 }
 
 function showTab(name) {
@@ -231,6 +253,7 @@ function showTab(name) {
   else if (name === 'replies') loadReplyList();
   else if (name === 'banned') loadBanned();
   else if (name === 'notices') loadNotices();
+  else if (name === 'reports') loadReports();
   else if (name === 'config') loadConfig();
   else if (name === 'overview') loadOverview();
 }
@@ -254,7 +277,11 @@ async function loadForumStats() {
       <div class="stat"><div class="n">${esc(s.boards)}</div><div class="t">版块</div></div>
       <div class="stat"><div class="n">${esc(s.bannedWords)}</div><div class="t">敏感词</div></div>
       <div class="stat"><div class="n">${esc(s.pending)}</div><div class="t">待审核</div></div>
-      <div class="stat"><div class="n">${esc(s.trashed)}</div><div class="t">回收站</div></div>`;
+      <div class="stat"><div class="n">${esc(s.trashed)}</div><div class="t">回收站</div></div>
+      <div class="stat"><div class="n">${esc(s.reports_pending)}</div><div class="t">待处理举报</div></div>
+      <div class="stat"><div class="n">${esc(s.sign_total)}</div><div class="t">总签到</div></div>
+      <div class="stat"><div class="n">${esc(s.total_points)}</div><div class="t">总积分</div></div>
+      <div class="stat"><div class="n">${esc(s.signed_today)}</div><div class="t">今日签到</div></div>`;
     if (s.boardDist && s.boardDist.length) {
       document.getElementById('forum-stats').insertAdjacentHTML('afterend',
         `<div class="card"><h3 style="margin-bottom:10px">版块主题分布</h3><div>${s.boardDist.map((b) => `${esc(b.icon || '')} ${esc(b.name)}：<b>${b.topic_count}</b>`).join('　')}</div></div>`);
@@ -463,6 +490,33 @@ async function loadModTopicOptions() {
   const { list: boards } = await Api.boards();
   document.getElementById('t_board').innerHTML = '<option value="">全部板块</option>' + [].concat(boards || [], (boards || []).flatMap((b) => b.children || [])).map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
   topicOptionsLoaded = true;
+}
+
+/* 举报管理 */
+async function loadReports() {
+  try {
+    const d = await Api.adminReports();
+    document.getElementById('rep-pending').textContent = d.pending || 0;
+    const list = d.list || [];
+    document.getElementById('report-list').innerHTML = list.length ? `<div class="table-wrap"><table>
+      <tr><th>ID</th><th>主题</th><th>举报人</th><th>理由</th><th>时间</th><th>状态</th><th>操作</th></tr>
+      ${list.map((r) => `<tr>
+        <td>${r.id}</td>
+        <td><a href="forum.html?id=${r.topic_id}" target="_blank">${esc(r.topic_title || '#' + r.topic_id)}</a></td>
+        <td>${esc(r.reporter_name || '用户' + r.user_id)}</td>
+        <td>${esc(r.reason || '')}</td>
+        <td>${esc(r.created_at)}</td>
+        <td>${r.status === 0 ? '<span style="color:var(--danger)">待处理</span>' : '已处理'}</td>
+        <td style="white-space:nowrap">
+          ${r.status === 0 ? `<button class="btn-sm" onclick="handleReport(${r.id})">标记已处理</button>
+          <button class="btn-sm danger" onclick="handleReport(${r.id}, true)">处理并删除主题</button>` : ''}
+        </td>
+      </tr>`).join('')}</table></div>` : '<div class="empty">暂无举报</div>';
+  } catch (e) { toast(e.message, false); }
+}
+async function handleReport(id, del) {
+  if (del && !confirm('处理该举报并软删除对应主题？')) return;
+  try { await Api.handleReport(id, { status: 1, action: del ? 'delete' : '' }); toast(del ? '已处理并删除主题' : '已标记处理'); loadReports(); loadForumStats(); } catch (e) { toast(e.message, false); }
 }
 
 async function loadConfig() {

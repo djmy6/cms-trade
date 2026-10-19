@@ -5,7 +5,7 @@ import { json, error, readBody, authFromRequest, isAdmin, logAdmin } from '../..
 
 export const onRequestPut = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);
-  if (!isAdmin(u) && u.role !== 'supermod') return error('需要管理权限', 403);
+  if (!u || (!isAdmin(u) && u.role !== 'supermod')) return error('需要管理权限', 403);
   const id = parseInt(params.id, 10);
   const body = await readBody(request);
   const content = String(body.content || '').trim();
@@ -18,7 +18,7 @@ export const onRequestPut = async ({ env, request, params }) => {
 
 export const onRequestDelete = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);
-  if (!isAdmin(u) && u.role !== 'supermod') return error('需要管理权限', 403);
+  if (!u || (!isAdmin(u) && u.role !== 'supermod')) return error('需要管理权限', 403);
   const id = parseInt(params.id, 10);
   await env.DB.prepare('DELETE FROM forum_notices WHERE id = ?').bind(id).run();
   await logAdmin(env, u.id, '删除公告', '#' + id);

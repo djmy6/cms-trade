@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT DEFAULT '',
   role TEXT DEFAULT 'user',          -- 'user' 普通用户 / 'admin' 管理员
   email TEXT DEFAULT '',             -- 邮箱（v4，注册验证）
+  avatar TEXT DEFAULT '',            -- 头像（v6，dataURL 或 URL）
+  signature TEXT DEFAULT '',         -- 个性签名（v6）
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
@@ -187,3 +189,85 @@ INSERT OR IGNORE INTO site_config (key, value) VALUES
   ('sms_code_expire_min','5'),
   ('email_code_expire_min','5'),
   ('code_resend_seconds','45');
+
+-- ===== v6：互动/成长/社交 扩展（2026-10）=====
+
+-- 用户成长信息（积分/等级/签到）
+CREATE TABLE IF NOT EXISTS user_stats (
+  user_id INTEGER PRIMARY KEY,
+  points INTEGER DEFAULT 0,          -- 总积分
+  level INTEGER DEFAULT 1,           -- 等级（由积分决定）
+  total_signs INTEGER DEFAULT 0,     -- 累计签到
+  sign_streak INTEGER DEFAULT 0,     -- 连续签到
+  last_sign_at TEXT DEFAULT '',      -- 最近签到日期(YYYY-MM-DD)
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 积分流水（签到/发帖/回帖/被赞/举报处理）
+CREATE TABLE IF NOT EXISTS sign_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  points INTEGER NOT NULL,           -- 正负
+  reason TEXT DEFAULT '',
+  ref_id INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 主题顶/踩
+CREATE TABLE IF NOT EXISTS topic_votes (
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  value INTEGER DEFAULT 1,           -- 1 顶 / -1 踩
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (topic_id, user_id)
+);
+
+-- 主题收藏
+CREATE TABLE IF NOT EXISTS topic_favorites (
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (topic_id, user_id)
+);
+
+-- 站内私信
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id INTEGER NOT NULL,
+  to_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- @提及提醒
+CREATE TABLE IF NOT EXISTS mentions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER DEFAULT 0,
+  reply_id INTEGER DEFAULT 0,
+  from_id INTEGER NOT NULL,
+  to_id INTEGER NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 关注
+CREATE TABLE IF NOT EXISTS follows (
+  follower_id INTEGER NOT NULL,
+  following_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (follower_id, following_id)
+);
+
+-- 主题举报
+CREATE TABLE IF NOT EXISTS topic_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,          -- 举报人
+  reason TEXT DEFAULT '',
+  status INTEGER DEFAULT 0,          -- 0 待处理 / 1 已处理
+  handled_by INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 已存在的库补充 users.avatar / users.signature 列（migration 用；全新库已在 users CREATE 中）

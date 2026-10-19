@@ -1,5 +1,5 @@
-// POST /api/forum/topics/:id/reply   回帖（登录，含敏感词过滤 / 锁定拦截）
-import { json, error, readBody, authFromRequest, isBanned, filterBannedWords } from '../../../_utils.js';
+// POST /api/forum/topics/:id/reply   回帖（登录，含敏感词过滤 / 锁定拦截；回帖 +1 积分，@提及提醒）
+import { json, error, readBody, authFromRequest, isBanned, filterBannedWords, addPoints, parseMentions } from '../../../_utils.js';
 
 export const onRequestPost = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);
@@ -17,7 +17,9 @@ export const onRequestPost = async ({ env, request, params }) => {
   if (t.results[0].locked) return error('该主题已锁定，无法回帖');
   if (t.results[0].allow_reply === 0) return error('该板块已关闭回帖');
   content = await filterBannedWords(env, content);
-  await env.DB.prepare('INSERT INTO forum_replies (topic_id, user_id, content) VALUES (?, ?, ?)').bind(topicId, u.id, content).run();
+  const r = await env.DB.prepare('INSERT INTO forum_replies (topic_id, user_id, content) VALUES (?, ?, ?)').bind(topicId, u.id, content).run();
   await env.DB.prepare('UPDATE forum_topics SET reply_count = reply_count + 1 WHERE id = ?').bind(topicId).run();
+  await addPoints(env, u.id, 1, '发布回复', r.meta.last_row_id || 0).catch(() => {});
+  await parseMentions(env, content, u.id, topicId, r.meta.last_row_id || 0).catch(() => {});
   return json({ created: true }, 201);
 };

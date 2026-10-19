@@ -138,3 +138,69 @@ INSERT OR IGNORE INTO site_config (key, value) VALUES
   ('sms_code_expire_min','5'),
   ('email_code_expire_min','5'),
   ('code_resend_seconds','45');
+
+-- ===== v6：互动/成长/社交 扩展（2026-10）=====
+ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT '';
+ALTER TABLE users ADD COLUMN signature TEXT DEFAULT '';
+CREATE TABLE IF NOT EXISTS user_stats (
+  user_id INTEGER PRIMARY KEY,
+  points INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 1,
+  total_signs INTEGER DEFAULT 0,
+  sign_streak INTEGER DEFAULT 0,
+  last_sign_at TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+CREATE TABLE IF NOT EXISTS sign_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  points INTEGER NOT NULL,
+  reason TEXT DEFAULT '',
+  ref_id INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+CREATE TABLE IF NOT EXISTS topic_votes (
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  value INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (topic_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS topic_favorites (
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (topic_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_id INTEGER NOT NULL,
+  to_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+CREATE TABLE IF NOT EXISTS mentions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER DEFAULT 0,
+  reply_id INTEGER DEFAULT 0,
+  from_id INTEGER NOT NULL,
+  to_id INTEGER NOT NULL,
+  is_read INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+CREATE TABLE IF NOT EXISTS follows (
+  follower_id INTEGER NOT NULL,
+  following_id INTEGER NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  PRIMARY KEY (follower_id, following_id)
+);
+CREATE TABLE IF NOT EXISTS topic_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  reason TEXT DEFAULT '',
+  status INTEGER DEFAULT 0,
+  handled_by INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);

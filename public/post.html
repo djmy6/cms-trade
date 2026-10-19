@@ -12,12 +12,16 @@
   <span class="brand">交易记录 CMS</span>
   <a class="link" href="index.html">首页</a>
   <a class="link" href="publish.html">发布</a>
-  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
-  <a class="link" href="settings.html">对外显示设置</a>
-  <a class="link" href="forum.html">交流论坛</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台</a>
+  <a class="link" href="settings.html">设置</a>
+  <a class="link" href="forum.html">论坛</a>
   <div class="spacer"></div>
-  <span class="user-chip" id="nav-user"></span>
-  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+  <div class="nav-actions">
+    <button class="icon-btn" id="theme-toggle" title="夜间/日间">🌓</button>
+    <span class="user-chip" id="nav-user"></span>
+    <a class="link" id="nav-login" href="login.html">登录</a>
+    <a class="link" id="nav-logout" href="#" style="display:none">退出</a>
+  </div>
 </div></nav>
 
 <div class="container">
@@ -25,6 +29,17 @@
 </div>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
+
+<button class="back-top" id="back-top">↑</button>
+<script>
+function applyTheme(){ document.documentElement.classList.toggle('dark', localStorage.getItem('cms_theme') === 'dark'); }
+applyTheme();
+document.getElementById('theme-toggle').onclick = () => { const d = document.documentElement.classList.toggle('dark'); localStorage.setItem('cms_theme', d ? 'dark' : 'light'); };
+const bt = document.getElementById('back-top');
+window.addEventListener('scroll', () => bt.classList.toggle('show', window.scrollY > 300));
+bt.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+</script>
+
 <script>
 const F = [
   ['platform','交易平台'],['shop_name','店铺名称'],['item','购买物品'],['amount','物品金额'],

@@ -4,58 +4,81 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>交流论坛</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EF%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232f6feb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EF%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
-<style>
-.notice-bar{background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#ad6800}
-.notice-bar b{color:#d46b08}
-.board-group{font-weight:600;font-size:14px;color:var(--muted);padding:6px 2px}
-.board-group:not(:first-child){margin-top:10px}
-.f-tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:4px;vertical-align:2px}
-.f-sticky{background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f}
-.f-digest{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
-.f-lock{background:#f0f0f0;color:#999;border:1px solid #d9d9d9}
-.locked-hint{color:#fa541c;font-size:13px;margin-top:6px}
-</style>
+<style>.topic-row{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}.topic-row:last-child{border-bottom:none}.topic-row:hover{background:var(--bg-soft)}.topic-row .t-main{flex:1;min-width:0}.topic-row .t-title{font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.topic-row:hover .t-title{color:var(--primary)}.topic-row .t-sub{font-size:12px;color:var(--muted);margin-top:3px}.topic-row .t-side{flex:none;text-align:right;font-size:12px;color:var(--muted)}.topic-row .t-side b{font-size:14px;color:var(--primary)}.sort-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}</style>
 </head>
 <body>
 <nav class="nav"><div class="nav-inner">
   <span class="brand">交易记录 CMS</span>
   <a class="link" href="index.html">首页</a>
   <a class="link" href="publish.html">发布</a>
-  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台管理</a>
-  <a class="link" href="settings.html">对外显示设置</a>
-  <a class="link" href="forum.html">交流论坛</a>
+  <a class="link" id="nav-admin" href="admin.html" style="display:none">后台</a>
+  <a class="link" href="settings.html">设置</a>
+  <a class="link" href="forum.html" style="color:var(--primary);background:var(--primary-soft)">论坛</a>
   <div class="spacer"></div>
-  <span class="user-chip" id="nav-user"></span>
-  <a class="link" id="nav-login" href="login.html">登录</a>
-  <a class="link" href="#" id="nav-logout" style="display:none">退出</a>
+  <div class="nav-search"><span class="s-ic">🔍</span><input id="nav-search" placeholder="搜索主题..."></div>
+  <div class="nav-actions">
+    <button class="icon-btn" id="theme-toggle" title="夜间/日间">🌓</button>
+    <button class="icon-btn nav-badge" id="msg-btn" title="私信">✉<span class="dot" id="msg-dot"></span></button>
+    <button class="icon-btn nav-badge" id="mention-btn" title="@提醒">@<span class="dot" id="mention-dot"></span></button>
+    <span class="user-chip" id="nav-user"></span>
+    <a class="link" id="nav-login" href="login.html">登录</a>
+    <a class="link" id="nav-logout" href="#" style="display:none">退出</a>
+  </div>
 </div></nav>
 
 <div class="container">
   <div id="view-list">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <h2 style="margin:0">交流论坛</h2>
-      <button class="btn" id="btn-new-topic">发 帖</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <h2 style="margin:0;font-size:22px">交流论坛</h2>
+        <div style="font-size:13px;color:var(--muted)">交易记录用户的交流社区 · 发帖回帖赚积分</div>
+      </div>
+      <button class="btn" id="btn-new-topic">✏️ 发 帖</button>
     </div>
     <div id="notices"></div>
-    <div class="search-bar" id="board-tabs" style="margin-bottom:12px"></div>
-    <div id="topic-list"></div>
-    <div id="pager" style="display:none;text-align:center;margin-top:12px">
-      <button class="btn ghost" id="btn-prev">上一页</button>
-      <span id="page-info" style="margin:0 12px;color:var(--muted)"></span>
-      <button class="btn ghost" id="btn-next">下一页</button>
+
+    <div class="layout">
+      <div class="layout-main">
+        <div class="sort-tabs" id="sort-tabs">
+          <button class="tab-btn active" data-sort="">最新</button>
+          <button class="tab-btn" data-sort="hot">热门</button>
+          <button class="tab-btn" data-sort="digest">精华</button>
+        </div>
+        <div id="board-area"></div>
+        <div id="topic-list"></div>
+        <div id="pager" style="display:none;text-align:center;margin-top:14px">
+          <button class="btn ghost" id="btn-prev">← 上一页</button>
+          <span id="page-info" style="margin:0 12px;color:var(--muted)"></span>
+          <button class="btn ghost" id="btn-next">下一页 →</button>
+        </div>
+      </div>
+      <div class="layout-side">
+        <div class="card" id="sign-card" style="display:none"></div>
+        <div class="card">
+          <h3>🔥 热门主题</h3>
+          <ol class="hot-list" id="hot-topics"></ol>
+        </div>
+        <div class="card">
+          <h3>🏆 积分排行</h3>
+          <div id="hot-users"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <div id="view-detail" style="display:none">
-    <button class="btn ghost" id="btn-back" style="margin-bottom:14px">← 返回论坛</button>
+    <div class="breadcrumb">
+      <a href="forum.html">论坛</a><span class="sep">›</span><span class="cur" id="crumb-board">主题详情</span>
+    </div>
     <div class="card" id="topic-detail"></div>
     <div class="card" id="replies-box"></div>
     <div class="card" id="reply-form">
       <h3 style="margin-bottom:10px">发表回复</h3>
-      <textarea id="reply-content" rows="3" placeholder="写下你的回复"></textarea>
-      <div style="margin-top:10px"><button class="btn" id="btn-reply">提交回复</button></div>
+      <div class="emoji-bar"><button class="emoji-toggle" id="reply-emoji-toggle">😊 表情</button><div id="reply-emojis" style="display:none"></div></div>
+      <textarea id="reply-content" rows="3" placeholder="写下你的回复，输入 @用户名 可提醒对方"></textarea>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn" id="btn-reply">提交回复</button><button class="btn ghost" id="btn-back">返回论坛</button></div>
     </div>
   </div>
 </div>
@@ -66,7 +89,11 @@
     <h3>发布主题</h3>
     <div class="form-group"><label>选择板块</label><select id="new-board"></select></div>
     <div class="form-group"><label>标题</label><input id="new-title" placeholder="一句话说清问题"></div>
-    <div class="form-group"><label>内容</label><textarea id="new-content" rows="4" placeholder="详细说明（含敏感词会被自动替换）"></textarea></div>
+    <div class="form-group">
+      <label>内容</label>
+      <div class="emoji-bar"><button class="emoji-toggle" id="topic-emoji-toggle">😊 表情</button><div id="topic-emojis" style="display:none"></div></div>
+      <textarea id="new-content" rows="4" placeholder="详细说明（含敏感词会被自动替换，输入 @用户名 可提醒对方）"></textarea>
+    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn ghost" onclick="document.getElementById('new-modal').style.display='none'">取消</button>
       <button class="btn" id="btn-submit-topic">发布</button>
@@ -86,61 +113,146 @@
   </div>
 </div>
 
+<!-- 私信弹窗 -->
+<div class="modal-bg" id="msg-modal" style="display:none">
+  <div class="modal">
+    <h3>站内私信</h3>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <input id="msg-to" placeholder="收件人昵称 / 用户ID" style="flex:1;min-width:120px">
+    </div>
+    <textarea id="msg-content" rows="2" placeholder="私信内容"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+      <button class="btn ghost" onclick="document.getElementById('msg-modal').style.display='none'">关闭</button>
+      <button class="btn" id="btn-send-msg">发送</button>
+    </div>
+    <h4 style="margin-top:14px">历史消息</h4>
+    <div id="msg-list" style="max-height:240px;overflow:auto"></div>
+  </div>
+</div>
+
+<!-- @提醒弹窗 -->
+<div class="modal-bg" id="mention-modal" style="display:none">
+  <div class="modal">
+    <h3>@ 我的</h3>
+    <div id="mention-list"></div>
+    <div style="text-align:right;margin-top:10px"><button class="btn ghost" onclick="document.getElementById('mention-modal').style.display='none'">关闭</button></div>
+  </div>
+</div>
+
+<!-- 举报弹窗 -->
+<div class="modal-bg" id="report-modal" style="display:none">
+  <div class="modal">
+    <h3>举报主题</h3>
+    <div class="form-group"><label>举报理由</label><textarea id="report-reason" rows="3" placeholder="请描述违规内容"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn ghost" onclick="document.getElementById('report-modal').style.display='none'">取消</button>
+      <button class="btn" id="btn-submit-report">提交举报</button>
+    </div>
+  </div>
+</div>
+
+<button class="back-top" id="back-top">↑</button>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
 <script>
-let boards = [], currentBoard = '', page = 1, size = 20, total = 0;
+const EMOJIS = ['😀','😄','😂','🤣','😊','😍','🥰','😎','🤔','😅','😭','😤','👍','👏','🙏','💪','❤️','🔥','✨','🎉','🍻','💡','⚠️','✅'];
+let boards = [], currentBoard = '', page = 1, size = 20, total = 0, currentSort = '', currentQ = '';
 const id = new URLSearchParams(location.search).get('id');
-let moveTargetTopic = null;
+const qp = new URLSearchParams(location.search).get('q') || '';
+let currentTopic = null;
+
+/* ---- 主题 / 夜间 / 回到顶部 ---- */
+function applyTheme(){ document.documentElement.classList.toggle('dark', localStorage.getItem('cms_theme') === 'dark'); }
+applyTheme();
+document.getElementById('theme-toggle').onclick = () => { const d = document.documentElement.classList.toggle('dark'); localStorage.setItem('cms_theme', d ? 'dark' : 'light'); };
+const bt = document.getElementById('back-top');
+window.addEventListener('scroll', () => bt.classList.toggle('show', window.scrollY > 300));
+bt.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
 function renderNav() {
   const u = Api.user;
   if (u) {
-    const label = Api.roleLabel(u.role);
-    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role !== 'user' ? ' · ' + label : '');
+    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role !== 'user' ? ' · ' + Api.roleLabel(u.role) : '');
     document.getElementById('nav-login').style.display = 'none';
     document.getElementById('nav-logout').style.display = '';
     if (['admin', 'supermod', 'moderator'].includes(u.role)) document.getElementById('nav-admin').style.display = '';
+    loadNotifications();
+    loadSignCard();
   } else document.getElementById('nav-user').textContent = '未登录';
 }
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+document.getElementById('nav-search').value = qp;
+document.getElementById('nav-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { currentQ = e.target.value.trim(); page = 1; loadTopics(); } });
 
+async function loadNotifications() {
+  try {
+    const n = await Api.notifications();
+    const md = document.getElementById('msg-dot'), nd = document.getElementById('mention-dot');
+    if (n.unread_messages > 0) { md.style.display = ''; md.textContent = n.unread_messages; } else md.style.display = 'none';
+    if (n.unread_mentions > 0) { nd.style.display = ''; nd.textContent = n.unread_mentions; } else nd.style.display = 'none';
+  } catch (e) {}
+}
+
+/* ---- 签到 ---- */
+async function loadSignCard() {
+  const el = document.getElementById('sign-card');
+  el.style.display = '';
+  try {
+    const d = await Api.myStats();
+    const s = d.stats || {};
+    el.innerHTML = `
+      <div class="sign-card">
+        <div class="sc-ic">📅</div>
+        <div class="sc-info">
+          <b>积分 ${s.points || 0} · Lv.${s.level || 1}</b>
+          <div class="sc-meta">连续签到 ${s.sign_streak || 0} 天 · 累计 ${s.total_signs || 0} 次</div>
+        </div>
+        <button class="btn sign-btn ${d.signed_today ? 'done' : ''}" id="btn-sign" ${d.signed_today ? 'disabled' : ''}>${d.signed_today ? '已签到' : '签到 +2'}</button>
+      </div>`;
+    document.getElementById('btn-sign').onclick = async () => {
+      try { const r = await Api.sign(); toast('签到成功 +' + r.gain + ' 积分' + (r.bonus ? '（含连续奖励）' : '')); loadSignCard(); loadHot(); } catch (e) { toast(e.message, false); }
+    };
+  } catch (e) { el.innerHTML = '<div class="sign-card"><div class="sc-info"><b>登录后可签到赚积分</b></div></div>'; }
+}
+
+/* ---- 公告 ---- */
 async function loadNotices() {
   try {
     const r = await Api.notices();
     document.getElementById('notices').innerHTML = (r.list || []).map((n) =>
-      `<div class="notice-bar"><b>公告：</b>${esc(n.content)}</div>`).join('');
-  } catch { /* 忽略 */ }
+      `<div class="notice-bar"><span class="n-ic">📢</span><div><b>公告：</b>${esc(n.content)}</div></div>`).join('');
+  } catch (e) {}
 }
 
 function canManageBoard(board) {
   const u = Api.user;
   if (!u || !board) return false;
   if (u.role === 'admin' || u.role === 'supermod') return true;
-  if (u.role === 'moderator' && board.moderator_ids) {
-    return board.moderator_ids.split(',').map((x) => parseInt(x, 10)).includes(u.id);
-  }
+  if (u.role === 'moderator' && board.moderator_ids) return board.moderator_ids.split(',').map((x) => parseInt(x, 10)).includes(u.id);
   return false;
 }
 
+/* ---- 板块卡片 ---- */
 async function loadBoards() {
   const r = await Api.boards();
   boards = r.list || [];
-  const tab = document.getElementById('board-tabs');
-  const all = `<button class="btn ghost" data-id="">全部板块</button>`;
-  const groups = boards.map((b) => {
-    const head = `${b.icon || '▸'} <span style="color:${b.color || 'inherit'}">${esc(b.name)}</span>
-      <span class="badge">${b.topic_count}</span>`;
-    const kids = (b.children || []).map((c) =>
-      `<button class="btn ghost" data-id="${c.id}" style="${c.color ? 'color:' + c.color : ''}">
-        ${c.icon || ''} ${esc(c.name)} <span class="badge">${c.topic_count}</span>
-        ${(c.moderator_names || []).length ? `<small style="color:var(--muted)">· 版主 ${esc(c.moderator_names.join('、'))}</small>` : ''}
-      </button>`).join('');
-    return `<div class="board-group">${head}</div>${kids || '<small style="color:#bbb">（无子版块）</small>'}`;
-  }).join('');
-  tab.innerHTML = all + groups;
-  tab.querySelectorAll('button[data-id]').forEach((btn) => {
-    btn.onclick = () => { currentBoard = btn.getAttribute('data-id'); page = 1; loadTopics(); };
+  const area = document.getElementById('board-area');
+  area.innerHTML = boards.map((b) => `
+    <div class="board-card">
+      <div class="board-head">
+        <span class="board-icon">${esc(b.icon || '📁')}</span>
+        <div><div class="board-name" style="color:${esc(b.color || 'inherit')}">${esc(b.name)}</div>${b.description ? '<div class="board-desc">' + esc(b.description) + '</div>' : ''}</div>
+        <span class="board-count">${b.topic_count || 0} 主题</span>
+      </div>
+      <div class="board-children">${(b.children || []).length ? b.children.map((c) => `
+        <div class="board-sub" data-id="${c.id}" style="${c.color ? 'border-left:3px solid ' + c.color : ''}">
+          <span class="sub-ic">${esc(c.icon || '💬')}</span>
+          <div class="sub-info"><div class="sub-name">${esc(c.name)}</div><div class="sub-meta">${(c.moderator_names || []).length ? '版主：' + esc(c.moderator_names.join('、')) : ''}</div></div>
+          <span class="sub-count">${c.topic_count || 0}</span>
+        </div>`).join('') : '<div style="padding:14px 18px;font-size:12px;color:var(--muted)">（暂无子版块）</div>'}</div>
+    </div>`).join('');
+  area.querySelectorAll('.board-sub[data-id]').forEach((el) => {
+    el.onclick = () => { currentBoard = el.getAttribute('data-id'); currentQ = ''; document.getElementById('nav-search').value = ''; page = 1; loadTopics(); };
   });
 }
 
@@ -153,19 +265,20 @@ function tags(t) {
 }
 
 async function loadTopics() {
-  const d = await Api.topics({ board_id: currentBoard, page, size });
+  const d = await Api.topics({ board_id: currentBoard, q: currentQ, sort: currentSort, page, size });
   total = d.total;
   const box = document.getElementById('topic-list');
+  if (currentBoard) {
+    const b = (boards.flatMap((x) => [x, ...(x.children || [])])).find((x) => String(x.id) === String(currentBoard));
+    if (b) document.getElementById('board-area').innerHTML = `<div class="board-card"><div class="board-head"><span class="board-icon">${esc(b.icon || '💬')}</span><div><div class="board-name">${esc(b.name)}</div></div><span class="board-count">${b.topic_count || 0} 主题</span></div></div>`;
+  }
   box.innerHTML = d.list.length ? d.list.map((t) => `
-    <div class="post-card" onclick="location.href='forum.html?id=${t.id}'">
-      <div class="forum-title">${tags(t)}${esc(t.title)}</div>
-      <div style="font-size:13px;color:var(--muted)">${esc(t.content || '').slice(0, 80)}${(t.content || '').length > 80 ? '…' : ''}</div>
-      <div class="post-meta">
-        <span class="badge">${esc(t.board_name || '未分类')}</span>
-        <span>作者：${esc(t.author_name || t.author_phone || '用户' + t.user_id)}</span>
-        <span>回复 ${t.reply_count} · 浏览 ${t.views}</span>
-        <span>${esc(t.created_at)}</span>
+    <div class="topic-row" onclick="location.href='forum.html?id=${t.id}'">
+      <div class="t-main">
+        <div class="t-title">${tags(t)}${esc(t.title)}</div>
+        <div class="t-sub"><span style="color:var(--primary)">${esc(t.board_name || '未分类')}</span> · ${esc(t.author_name || '用户' + t.user_id)} · ${esc(t.created_at)}</div>
       </div>
+      <div class="t-side"><b>${t.reply_count}</b> 回复<br>👍 ${t.votes_up || 0} · 浏览 ${t.views}</div>
     </div>`).join('') : '<div class="empty">暂无主题，点击右上角「发帖」开始交流</div>';
   const pg = document.getElementById('pager');
   pg.style.display = total > size ? '' : 'none';
@@ -173,18 +286,51 @@ async function loadTopics() {
 }
 document.getElementById('btn-prev').onclick = () => { if (page > 1) { page--; loadTopics(); } };
 document.getElementById('btn-next').onclick = () => { if (page * size < total) { page++; loadTopics(); } };
+document.getElementById('sort-tabs').querySelectorAll('.tab-btn').forEach((b) => {
+  b.onclick = () => {
+    document.getElementById('sort-tabs').querySelectorAll('.tab-btn').forEach((x) => x.classList.toggle('active', x === b));
+    currentSort = b.getAttribute('data-sort'); page = 1; loadTopics();
+  };
+});
 
-// 发帖
+/* ---- 人气榜 ---- */
+async function loadHot() {
+  try {
+    const d = await Api.hot();
+    document.getElementById('hot-topics').innerHTML = (d.hot_topics || []).map((t, i) => `
+      <li onclick="location.href='forum.html?id=${t.id}'">
+        <span class="rank">${i + 1}</span><span class="h-title">${esc(t.title)}</span><span class="h-meta">${t.reply_count}回/${t.votes_up || 0}赞</span>
+      </li>`).join('') || '<li><span class="h-title">暂无数据</span></li>';
+    document.getElementById('hot-users').innerHTML = (d.hot_users || []).map((u) => `
+      <div class="hot-user">
+        <div class="avatar">${u.avatar ? '<img src="' + esc(u.avatar) + '">' : (u.name || 'U')[0]}</div>
+        <div class="hu-info"><div class="hu-name">${esc(u.name || '用户' + u.user_id)}</div><div class="hu-pts">积分 ${u.points} · Lv.${u.level}</div></div>
+      </div>`).join('') || '<div class="empty">暂无数据</div>';
+  } catch (e) {}
+}
+
+/* ---- 表情 ---- */
+function buildEmojiBar(btnId, boxId, targetId) {
+  const box = document.getElementById(boxId);
+  box.innerHTML = EMOJIS.map((e) => `<button class="emoji-btn" data-e="${e}">${e}</button>`).join('');
+  box.querySelectorAll('.emoji-btn').forEach((b) => b.onclick = () => {
+    const ta = document.getElementById(targetId);
+    ta.value += b.getAttribute('data-e');
+    ta.focus();
+  });
+  document.getElementById(btnId).onclick = () => { box.style.display = box.style.display === 'none' ? '' : 'none'; };
+}
+buildEmojiBar('topic-emoji-toggle', 'topic-emojis', 'new-content');
+buildEmojiBar('reply-emoji-toggle', 'reply-emojis', 'reply-content');
+
+/* ---- 发帖 ---- */
 document.getElementById('btn-new-topic').onclick = () => {
   if (!authRequired()) return;
   const opts = [];
   boards.forEach((b) => {
     const kids = (b.children || []).filter((c) => c.allow_post !== 0);
-    if (kids.length) {
-      kids.forEach((c) => opts.push(`<option value="${c.id}">${esc(b.name)} › ${esc(c.name)}</option>`));
-    } else if (b.allow_post !== 0 && !b.parent_id) {
-      opts.push(`<option value="${b.id}">${esc(b.name)}</option>`);
-    }
+    if (kids.length) kids.forEach((c) => opts.push(`<option value="${c.id}">${esc(b.name)} › ${esc(c.name)}</option>`));
+    else if (b.allow_post !== 0 && !b.parent_id) opts.push(`<option value="${b.id}">${esc(b.name)}</option>`);
   });
   document.getElementById('new-board').innerHTML = opts.join('') || '<option value="">（暂无开放发帖的板块）</option>';
   document.getElementById('new-modal').style.display = 'flex';
@@ -198,34 +344,27 @@ document.getElementById('btn-submit-topic').onclick = async () => {
   if (!content) return toast('请填写内容', false);
   try {
     await Api.createTopic({ board_id, title, content });
-    toast('发布成功');
+    toast('发布成功 +1积分');
     document.getElementById('new-modal').style.display = 'none';
     document.getElementById('new-title').value = '';
     document.getElementById('new-content').value = '';
-    loadTopics();
+    loadTopics(); loadSignCard(); loadHot();
   } catch (e) { toast(e.message, false); }
 };
 
-// 管理操作
+/* ---- 管理 ---- */
 async function doManage(action, value) {
   if (!authRequired()) return;
-  try {
-    await Api.manageTopic(id, { [action]: value });
-    toast('操作成功');
-    loadTopic();
-  } catch (e) { toast(e.message, false); }
+  try { await Api.manageTopic(id, { [action]: value }); toast('操作成功'); loadTopic(); } catch (e) { toast(e.message, false); }
 }
 document.getElementById('btn-confirm-move').onclick = async () => {
-  if (!moveTargetTopic) return;
+  if (!currentTopic) return;
   try {
-    await Api.manageTopic(moveTargetTopic, { move_to: parseInt(document.getElementById('move-board').value, 10) });
-    toast('已移动');
-    document.getElementById('move-modal').style.display = 'none';
-    loadTopic();
+    await Api.manageTopic(currentTopic.id, { move_to: parseInt(document.getElementById('move-board').value, 10) });
+    toast('已移动'); document.getElementById('move-modal').style.display = 'none'; loadTopic();
   } catch (e) { toast(e.message, false); }
 };
 function openMove() {
-  moveTargetTopic = id;
   const opts = [];
   boards.forEach((b) => {
     const kids = b.children || [];
@@ -236,49 +375,83 @@ function openMove() {
   document.getElementById('move-modal').style.display = 'flex';
 }
 
-// 详情
+/* ---- 投票 / 收藏 / 举报 ---- */
+async function vote(value) {
+  if (!authRequired()) return;
+  try { const r = await Api.voteTopic(id, value); currentTopic.my_vote = r.voted; currentTopic.votes_up = r.votes_up; currentTopic.votes_down = r.votes_down; renderTopic(); toast(value === 1 ? '已点赞' : '已点踩'); } catch (e) { toast(e.message, false); }
+}
+async function fav() {
+  if (!authRequired()) return;
+  try { const r = await Api.favoriteTopic(id); currentTopic.favorited = r.favorited; currentTopic.favorites_count = r.favorites_count; renderTopic(); toast(r.favorited ? '已收藏' : '已取消收藏'); } catch (e) { toast(e.message, false); }
+}
+document.getElementById('btn-submit-report').onclick = async () => {
+  if (!authRequired()) return;
+  const reason = document.getElementById('report-reason').value.trim();
+  if (!reason) return toast('请填写举报理由', false);
+  try { await Api.reportTopic(id, reason); document.getElementById('report-modal').style.display = 'none'; document.getElementById('report-reason').value = ''; toast('举报已提交，等待管理员处理'); } catch (e) { toast(e.message, false); }
+};
+
+/* ---- 详情 ---- */
 async function loadTopic() {
   const d = await Api.topic(id);
+  currentTopic = d.topic;
   const t = d.topic;
-  const u = Api.user;
-  const board = (boards.find((b) => b.id === t.board_id) || {}).children?.find((c) => c.id === t.board_id) ||
-    boards.find((b) => b.id === t.board_id);
-  const canManage = canManageBoard({ moderator_ids: (board && board.moderator_ids) || (u && u.role === 'moderator' ? t.moderator_ids : '') });
-  const isMod = u && (u.role === 'admin' || u.role === 'supermod');
-  const isBoardMod = canManage;
-  const canDel = u && (u.role === 'admin' || t.user_id === u.id || canManage);
-
+  document.getElementById('crumb-board').textContent = t.board_name || '主题详情';
   document.getElementById('view-list').style.display = 'none';
   document.getElementById('view-detail').style.display = '';
+  renderTopic();
+  renderReplies(d.replies);
+  document.getElementById('reply-form').style.display = t.locked ? 'none' : '';
+}
+
+function renderTopic() {
+  const t = currentTopic;
+  const u = Api.user;
+  const board = (boards.flatMap((x) => [x, ...(x.children || [])])).find((x) => x.id === t.board_id);
+  const canManage = u && (u.role === 'admin' || u.role === 'supermod' || canManageBoard(board));
+  const canDel = u && (u.role === 'admin' || t.user_id === u.id || canManage);
   document.getElementById('topic-detail').innerHTML = `
-    <h2 style="margin-bottom:6px">${tags(t)}${esc(t.title)}</h2>
+    <h2 style="font-size:20px;margin-bottom:10px">${tags(t)}${esc(t.title)}</h2>
     <div class="post-meta" style="margin-bottom:12px">
       <span class="badge">${esc(t.board_name || '未分类')}</span>
-      <span>作者：${esc(t.author_name || t.author_phone || '用户' + t.user_id)}</span>
-      <span>回复 ${t.reply_count} · 浏览 ${t.views}</span>
+      <span>作者：<a href="javascript:void(0)" onclick="openUser(${t.user_id})">${esc(t.author_name || '用户' + t.user_id)}</a></span>
+      <span>👍 ${t.votes_up || 0} · 👎 ${t.votes_down || 0}</span>
+      <span>收藏 ${t.favorites_count || 0} · 回复 ${t.reply_count} · 浏览 ${t.views}</span>
       <span>${esc(t.created_at)}</span>
     </div>
-    <div style="font-size:15px;line-height:1.7;white-space:pre-wrap">${esc(t.content)}</div>
+    <div style="font-size:15px;line-height:1.8;white-space:pre-wrap;word-break:break-word">${esc(t.content)}</div>
     ${t.locked ? '<div class="locked-hint">🔒 本主题已锁定，仅可浏览</div>' : ''}
-    ${(isBoardMod) ? `
+    <div class="vote-bar">
+      <button class="vote-btn up ${t.my_vote === 1 ? 'active' : ''}" onclick="vote(1)">👍 顶 <b>${t.votes_up || 0}</b></button>
+      <button class="vote-btn down ${t.my_vote === -1 ? 'active' : ''}" onclick="vote(-1)">👎 踩</button>
+      <button class="fav-btn ${t.favorited ? 'active' : ''}" onclick="fav()">${t.favorited ? '★ 已收藏' : '☆ 收藏'}</button>
+      <button class="report-btn" onclick="document.getElementById('report-modal').style.display='flex'">⚠ 举报</button>
+    </div>
+    ${(canManage) ? `
       <div class="forum-actions" style="margin-top:14px">
         <button class="btn-sm" onclick="doManage('sticky', ${t.sticky ? 0 : 1})">${t.sticky ? '取消置顶' : '置顶'}</button>
         <button class="btn-sm" onclick="doManage('digest', ${t.digest ? 0 : 1})">${t.digest ? '取消精华' : '设为精华'}</button>
         <button class="btn-sm" onclick="doManage('locked', ${t.locked ? 0 : 1})">${t.locked ? '解锁' : '锁定'}</button>
         <button class="btn-sm ghost" onclick="openMove()">移动版块</button>
-        <button class="btn-sm danger" onclick="doManage('deleted', 1)">删除(回收站)</button>
-      </div>` : ''}
-    ${canDel && !isBoardMod ? `
-      <div class="forum-actions" style="margin-top:14px">
         <button class="btn-sm danger" onclick="doManage('deleted', 1)">删除</button>
-      </div>` : ''}`;
-  document.getElementById('replies-box').innerHTML = '<h3 style="margin-bottom:12px">回复（' + d.replies.length + '）</h3>' +
-    (d.replies.length ? d.replies.map((r) => `
-      <div class="post-card" style="padding:12px 14px;margin-bottom:8px">
-        <div style="font-size:14px;white-space:pre-wrap">${esc(r.content)}</div>
-        <div class="post-meta"><span>${esc(r.author_name || r.author_phone || '用户' + r.user_id)}</span><span>${esc(r.created_at)}</span></div>
+      </div>` : ''}
+    ${canDel && !canManage ? `<div class="forum-actions" style="margin-top:14px"><button class="btn-sm danger" onclick="doManage('deleted', 1)">删除</button></div>` : ''}`;
+}
+
+function renderReplies(replies) {
+  document.getElementById('replies-box').innerHTML = '<h3 style="margin-bottom:6px">全部回复（' + replies.length + '）</h3>' +
+    (replies.length ? replies.map((r, i) => `
+      <div class="floor">
+        <div class="avatar">${esc((r.author_name || 'U')[0])}</div>
+        <div class="f-body">
+          <div class="f-head">
+            <span class="f-name" onclick="openUser(${r.user_id})">${esc(r.author_name || '用户' + r.user_id)}</span>
+            <span class="f-no">#${i + 2} 楼</span>
+            <span class="f-time">${esc(r.created_at)}</span>
+          </div>
+          <div class="f-content">${esc(r.content)}</div>
+        </div>
       </div>`).join('') : '<div class="empty">暂无回复，来说两句吧</div>');
-  document.getElementById('reply-form').style.display = t.locked ? 'none' : '';
   document.getElementById('btn-back').onclick = () => location.href = 'forum.html';
   document.getElementById('btn-reply').onclick = async () => {
     if (!authRequired()) return;
@@ -286,19 +459,95 @@ async function loadTopic() {
     if (!content) return toast('请填写回复内容', false);
     try {
       await Api.reply(id, content);
-      toast('回复成功');
+      toast('回复成功 +1积分');
       document.getElementById('reply-content').value = '';
-      loadTopic();
+      loadTopic(); loadNotifications();
     } catch (e) { toast(e.message, false); }
   };
 }
 
+/* ---- 用户弹窗（私信/关注）---- */
+function openUser(uid) {
+  if (!Api.user) { location.href = 'login.html'; return; }
+  Api.userProfile(uid).then((d) => {
+    const u = d.user, s = d.stats || {};
+    Api.myFollowing().then((f) => {
+      const isFollow = (f.list || []).some((x) => x.following_id === uid);
+      showUserModal(`<div style="text-align:center;margin-bottom:14px">
+        <div class="avatar lg" style="margin:0 auto 8px">${u.avatar ? '<img src="' + esc(u.avatar) + '">' : (u.name || 'U')[0]}</div>
+        <b>${esc(u.name || '用户' + u.id)}</b>
+        <div style="font-size:12px;color:var(--muted)">积分 ${s.points || 0} · Lv.${s.level || 1} · 主题 ${d.topic_count} · 回复 ${d.reply_count}</div>
+        ${u.signature ? '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(u.signature) + '</div>' : ''}
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+          <button class="btn-sm" onclick="startChat(${uid})">发私信</button>
+          <button class="btn-sm ghost" id="btn-follow-${uid}">${isFollow ? '取消关注' : '关注'}</button>
+        </div></div>`);
+      document.getElementById('btn-follow-' + uid).onclick = async () => {
+        try { const r = await Api.follow(uid); document.getElementById('btn-follow-' + uid).textContent = r.following ? '取消关注' : '关注'; toast(r.following ? '已关注' : '已取消关注'); } catch (e) { toast(e.message, false); }
+      };
+    }).catch(() => {});
+  }).catch((e) => toast(e.message, false));
+}
+function showUserModal(html) {
+  const div = document.createElement('div');
+  div.className = 'modal-bg'; div.style.display = 'flex'; div.id = 'user-modal';
+  div.innerHTML = '<div class="modal" style="max-width:360px">' + html + '<div style="text-align:center;margin-top:10px"><button class="btn ghost" onclick="this.closest(\'.modal-bg\').remove()">关闭</button></div></div>';
+  document.body.appendChild(div);
+  div.onclick = (e) => { if (e.target === div) div.remove(); };
+}
+function startChat(uid) { document.getElementById('msg-to').value = uid; const um = document.getElementById('user-modal'); if (um) um.remove(); openInbox(); }
+
+/* ---- 私信 ---- */
+function openInbox() {
+  document.getElementById('msg-modal').style.display = 'flex';
+  loadInbox();
+}
+async function loadInbox() {
+  try {
+    const d = await Api.messages();
+    const list = d.list || [];
+    document.getElementById('msg-list').innerHTML = list.length ? list.map((m) => `
+      <div style="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px">
+        <div style="color:var(--muted);font-size:12px">${m.from_id === (Api.user && Api.user.id) ? '发给 ' + esc(m.to_name) : esc(m.from_name) + ' 发给我'} · ${esc(m.created_at)}</div>
+        <div>${esc(m.content)}</div>
+      </div>`).join('') : '<div class="empty">暂无私信</div>';
+    const ids = list.filter((m) => m.to_id === (Api.user && Api.user.id) && !m.is_read).map((m) => m.id);
+    if (ids.length) { Api.readMessages(ids).then(() => loadNotifications()); }
+  } catch (e) {}
+}
+document.getElementById('msg-btn').onclick = () => { if (!authRequired()) return; openInbox(); };
+document.getElementById('btn-send-msg').onclick = async () => {
+  const to_user = document.getElementById('msg-to').value.trim();
+  const content = document.getElementById('msg-content').value.trim();
+  if (!to_user) return toast('请填写收件人', false);
+  if (!content) return toast('请填写私信内容', false);
+  try { await Api.sendMessage(to_user, content); document.getElementById('msg-content').value = ''; toast('私信已发送'); loadInbox(); } catch (e) { toast(e.message, false); }
+};
+
+/* ---- @提醒 ---- */
+function openMentions() {
+  document.getElementById('mention-modal').style.display = 'flex';
+  Api.mentions().then((d) => {
+    const list = d.list || [];
+    document.getElementById('mention-list').innerHTML = list.length ? list.map((m) => `
+      <div style="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13px">
+        <b>${esc(m.from_name || '用户' + m.from_id)}</b> 提到了你
+        ${m.topic_title ? '<span style="color:var(--muted)">（主题：' + esc(m.topic_title) + '）</span>' : ''}
+        <div style="font-size:12px;color:var(--muted)">${esc(m.created_at)}</div>
+        ${m.topic_id ? '<a href="forum.html?id=' + m.topic_id + '">去查看 ›</a>' : ''}
+      </div>`).join('') : '<div class="empty">暂无 @ 提醒</div>';
+    const ids = list.filter((m) => !m.is_read).map((m) => m.id);
+    if (ids.length) { Api.readMentions(ids).then(() => loadNotifications()); }
+  }).catch(() => {});
+}
+document.getElementById('mention-btn').onclick = () => { if (!authRequired()) return; openMentions(); };
+
 renderNav();
+loadHot();
 if (id) {
   loadBoards().catch(() => {});
   loadTopic().catch((e) => { if (e.message.includes('未登录')) location.href = 'login.html'; else toast(e.message, false); });
-}
-else {
+} else {
   Promise.all([loadBoards(), loadTopics(), loadNotices()]).catch((e) => toast(e.message, false));
 }
 </script>

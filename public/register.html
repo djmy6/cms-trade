@@ -52,6 +52,18 @@
 <div id="toast"></div>
 <script src="assets/numberAuth-web-sdk.js"></script>
 <script src="assets/api.js"></script>
+
+<button class="icon-btn" id="theme-toggle" title="夜间/日间" style="position:fixed;top:14px;right:16px;z-index:60">🌓</button>
+<button class="back-top" id="back-top">↑</button>
+<script>
+function applyTheme(){ document.documentElement.classList.toggle('dark', localStorage.getItem('cms_theme') === 'dark'); }
+applyTheme();
+document.getElementById('theme-toggle').onclick = () => { const d = document.documentElement.classList.toggle('dark'); localStorage.setItem('cms_theme', d ? 'dark' : 'light'); };
+const bt = document.getElementById('back-top');
+window.addEventListener('scroll', () => bt.classList.toggle('show', window.scrollY > 300));
+bt.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+</script>
+
 <script>
 function oneClickLogin() {
   if (!window.PhoneNumberServer) return toast('认证 SDK 未加载，请使用手机号验证码注册', false);

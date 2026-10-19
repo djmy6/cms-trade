@@ -147,3 +147,42 @@ export async function logAdmin(env, adminId, action, target, detail = '') {
     'INSERT INTO forum_admin_logs (admin_id, action, target, detail) VALUES (?, ?, ?, ?)'
   ).bind(adminId, action, target, detail).run();
 }
+
+// ---------- 积分 / 等级（v6）----------
+export function levelFor(points) {
+  return Math.max(1, Math.floor((points || 0) / 50) + 1); // 每 50 分升一级
+}
+export async function ensureStats(env, userId) {
+  await env.DB.prepare('INSERT OR IGNORE INTO user_stats (user_id) VALUES (?)').bind(userId).run();
+}
+// 给用户加/扣积分并写流水，返回最新积分/等级
+export async function addPoints(env, userId, points, reason, refId = 0) {
+  await ensureStats(env, userId);
+  const { results } = await env.DB.prepare('SELECT points FROM user_stats WHERE user_id = ?').bind(userId).all();
+  const cur = (results[0] && results[0].points) || 0;
+  const np = Math.max(0, cur + points);
+  const nl = levelFor(np);
+  await env.DB.prepare('UPDATE user_stats SET points = ?, level = ? WHERE user_id = ?').bind(np, nl, userId).run();
+  await env.DB.prepare('INSERT INTO sign_log (user_id, points, reason, ref_id) VALUES (?, ?, ?, ?)').bind(userId, points, reason, refId).run();
+  return { points: np, level: nl, delta: points };
+}
+// 论坛本地日期（UTC+8，与中国用户一致）
+export function cnDate(offsetDays = 0) {
+  const d = new Date(Date.now() + 8 * 3600 * 1000 + offsetDays * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+// ---------- @提及（v6）----------
+export async function parseMentions(env, content, fromId, topicId = 0, replyId = 0) {
+  if (!content) return;
+  const names = content.match(/@([\u4e00-\u9fa5A-Za-z0-9_-]{1,30})/g) || [];
+  const uniq = [...new Set(names.map((n) => n.slice(1)))].filter(Boolean);
+  if (!uniq.length) return;
+  const ph = uniq.map(() => '?').join(',');
+  const { results } = await env.DB.prepare(`SELECT id FROM users WHERE name IN (${ph})`).bind(...uniq).all();
+  for (const r of results) {
+    if (r.id === fromId) continue;
+    await env.DB.prepare('INSERT INTO mentions (topic_id, reply_id, from_id, to_id) VALUES (?, ?, ?, ?)')
+      .bind(topicId, replyId, fromId, r.id).run();
+  }
+}
