@@ -32,11 +32,12 @@ npm -v
 cms-trade/
 ├── public/           前端
 ├── functions/        后端接口
-├── wrangler.toml     配置文件
-├── schema.sql        数据库表结构
+├── schema.sql        数据库表结构（全新库，含 v3 论坛管理）
 ├── package.json
 └── README.md
 ```
+
+> **注意：仓库根目录不含 `wrangler.toml`。** 本项目采用「Dashboard 手动绑定 D1」的方式，不再用 `wrangler.toml` 管理绑定——一旦仓库出现 `wrangler.toml`，Cloudflare 会提示「Bindings managed through wrangler.toml」，导致 Dashboard 手动绑定失效、接口报错 `error code: 1101`（`env.DB undefined`）。
 
 ---
 
@@ -73,24 +74,19 @@ wrangler d1 create cms-trade-db
 
 ---
 
-## 4. 修改 wrangler.toml 填入数据库 ID
+## 4. 数据库绑定：用 Dashboard 手动绑定（不需要 wrangler.toml）
 
-用记事本 / VS Code 打开 `wrangler.toml`，找到：
+**本方案不写 `wrangler.toml`。** D1 绑定完全通过 Cloudflare 控制台手动完成：
 
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "cms-trade-db"
-database_id = "YOUR_D1_DATABASE_ID"
-```
+1. 把代码推到 GitHub 仓库后，先在 Cloudflare Pages 创建好项目（见第 6、7 节）
+2. 项目 → **Settings → Bindings** → **Add binding**
+   - **Type**：D1 database
+   - **Variable name**：`DB`（必须大写，与代码一致）
+   - **D1 database**：选择 `cms-trade-db`
+3. 保存后，页面会提示「This change will take effect on the next deployment」，需要 **Retry deployment** 让绑定生效
 
-把 `database_id` 的值替换成你第 3 步复制的 ID，例如：
-
-```toml
-database_id = "f3a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5"
-```
-
-保存。
+> 关键：**不要**在仓库根放 `wrangler.toml`（尤其是含 `[[d1_databases]]` 段），否则会被 `wrangler.toml` 接管绑定、Dashboard 手动绑定失效，接口报 `1101`。
+> 如果你仓库里已有该文件，删除它并重新 push（`git rm wrangler.toml && git commit && git push`）。
 
 ---
 
@@ -103,12 +99,13 @@ cd D:\cms-trade
 wrangler d1 execute cms-trade-db --file=./schema.sql --remote
 ```
 
-看到成功信息（创建的几张表）即完成。这会一次性建好全部表（用户、帖子、显示设置、自定义字段、论坛板块/主题/回帖），并自动创建默认管理员账号。
+看到成功信息（创建的几张表）即完成。这会一次性建好全部表（用户、帖子、显示设置、自定义字段、论坛板块/主题/回帖/敏感词/公告/管理日志），并自动创建默认管理员账号。
 
-> **如果之前已经部署过旧版、数据库里已存在 `users`/`posts` 等表**：不要重复执行 `schema.sql`（会因表已存在而报错），改用 `migration.sql` 补齐 v2 新列和新表：
+> **如果之前已经部署过旧版、数据库里已存在 `users`/`posts` 等表**：不要重复执行 `schema.sql`（会因表已存在而报错），改用 `migration.sql` 补齐 **v2 + v3** 新列和新表：
 > ```bash
 > wrangler d1 execute cms-trade-db --file=./migration.sql --remote
 > ```
+> `migration.sql` 里部分 `ALTER TABLE ... ADD COLUMN` 会因列已存在而报 `duplicate column`，**属正常可忽略**（PowerShell/Console 分多条执行时，成功语句照常写入）。
 
 > 另一种方式：在 Cloudflare 控制台 D1 → 点数据库名 → **Console**，把 `schema.sql` 全文粘贴进去执行，效果一样。
 
@@ -157,15 +154,15 @@ https://cms-trade-xxxxx.pages.dev
 
 ## 8. 绑定 D1 数据库到 Pages 项目
 
-前端接口要能读写数据库，必须把刚创建的 D1 绑定到 Pages 项目。
+前端接口要能读写数据库，必须把刚创建的 D1 绑定到 Pages 项目。**本项目不使用 `wrangler.toml` 管理绑定**，全部在控制台完成：
 
-1. 进入刚创建的项目 → **Settings → Functions → D1 database bindings**
-2. 点 **Add binding**：
-   - **Variable name**：`DB`（必须大写 DB，与代码一致）
+1. 进入刚创建的项目 → **Settings → Bindings**（部分界面路径为 Settings → Functions → D1 database bindings）
+2. 点 **Add binding**（或 Add）：
+   - **Type / Variable name**：`DB`（必须大写 DB，与代码一致）
    - **D1 database**：选择 `cms-trade-db`
-3. 保存，然后**重新部署一次**（Deployments → 最新版本 → **Retry deployment**，或再 push 一次），让绑定生效。
+3. 保存后，页面提示「This change will take effect on the next deployment」，然后到 **Deployments → Retry deployment**（或再 push 一次），让绑定生效。
 
-> 关键：变量名必须叫 `DB`，否则后端读取不到数据库。
+> 关键：变量名必须叫 `DB`，否则后端读取不到数据库；**仓库内绝不能存在 `wrangler.toml`**（否则绑定被接管、报 1101）。
 
 ---
 
@@ -214,8 +211,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 2. **登录账号 B** → 发一条记录，用 A 的买家姓名或地址关键词（如街道名）或单号后四位去首页搜索
 3. 确认：只显示 B 自己以外的、命中的记录，且**完整显示**对方记录全部字段（含自定义字段）
 4. 点「导出命中的他人记录」→ 下载 CSV
-5. **管理员登录**（djmy / 000000）→ 后台管理 → 用户、帖子、统计、**自定义字段管理**（添加字段后发布页会动态出现）、**论坛板块管理**
-6. **论坛**：首页点「交流论坛」→ 发帖、选择板块、写标题内容 → 其他账号回帖
+5. **管理员登录**（djmy / 000000）→ 后台管理：概览（论坛统计）、用户（含用户组：管理员/超级版主/版主/用户/禁言）、帖子、自定义字段、**版块**（二级分类/版主/开放开关）、**主题**（置顶/精华/锁定/审核/回收站/移版/硬删）、**回复**（回收/审核/硬删）、**敏感词**（命中自动替换为 *）、**公告**（前台置顶显示）
+6. **论坛前台**：首页点「交流论坛」→ 顶部可见公告；板块按分类/子版块展示（含版主名）；发帖可选子版块；主题带「置顶/精华/锁定」徽章，置顶优先；锁定主题仅可浏览不可回帖；版主可管理自己板块的主题
 7. 用注册账号在「对外显示设置」中开关字段，观察他人视角是否生效
 
 ---
@@ -262,7 +259,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | 改了代码页面没变化 | push 后等构建完成；看 Deployments 是否有新版本 |
 | 想换域名 | 项目 → **Custom domains** → Add custom domain（需域名托管在 Cloudflare） |
 | 数据丢失 / 想重置 | 这是正常运行的数据库；要清空可 D1 Console 执行 `DELETE FROM posts;` 等 |
-| 部署报「unable to find database」 | `wrangler.toml` 的 `database_id` 填错了，核对第 3、4 步 |
+| 接口报 `error code: 1101`（`env.DB undefined`） | 仓库根存在 `wrangler.toml` 抢占了 D1 绑定：删除该文件并 push，再到 Settings→Bindings 手动加 `DB`→`cms-trade-db`，Retry deployment |
+| 部署报「unable to find database」 | 检查 Dashboard Bindings 是否已添加 `DB`→`cms-trade-db` 并 Retry deployment（不依赖 wrangler.toml） |
+| 论坛提示「需要论坛管理权限」 | 当前账号用户组不足：把用户设成 `supermod`（超级版主）或指定为某版块的版主，或提为 `admin` |
+| 重复执行 migration 报 `duplicate column` | 属正常可忽略，说明列已存在；成功的语句已生效 |
 
 ---
 

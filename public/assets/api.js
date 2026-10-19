@@ -65,6 +65,28 @@ const Api = {
   topic: (id) => Api.get('/api/forum/topics/' + id),
   deleteTopic: (id) => Api.del('/api/forum/topics/' + id),
   reply: (id, content) => Api.post('/api/forum/topics/' + id + '/reply', { content }),
+  notices: () => Api.get('/api/forum/notices'),
+
+  // 论坛后台管理
+  adminTopics: (params) => Api.get('/api/admin/forum/topics?' + new URLSearchParams(params)),
+  manageTopic: (id, body) => Api.put('/api/admin/forum/topics/' + id, body),
+  hardDeleteTopic: (id) => Api.del('/api/admin/forum/topics/' + id),
+  adminReplies: (params) => Api.get('/api/admin/forum/replies?' + new URLSearchParams(params)),
+  manageReply: (id, body) => Api.put('/api/admin/forum/replies/' + id, body),
+  hardDeleteReply: (id) => Api.del('/api/admin/forum/replies/' + id),
+  updateBoard: (id, p) => Api.put('/api/admin/forum/boards/' + id, p),
+  deleteBoard: (id) => Api.del('/api/admin/forum/boards/' + id),
+  bannedWords: () => Api.get('/api/admin/forum/banned-words'),
+  addBannedWord: (word) => Api.post('/api/admin/forum/banned-words', { word }),
+  deleteBannedWord: (id) => Api.del('/api/admin/forum/banned-words/' + id),
+  adminNotices: () => Api.get('/api/admin/forum/notices'),
+  addNotice: (content) => Api.post('/api/admin/forum/notices', { content }),
+  updateNotice: (id, body) => Api.put('/api/admin/forum/notices/' + id, body),
+  deleteNotice: (id) => Api.del('/api/admin/forum/notices/' + id),
+  forumStats: () => Api.get('/api/admin/forum/stats'),
+
+  // 角色标签
+  roleLabel: (r) => ({ admin: '管理员', supermod: '超级版主', moderator: '版主', user: '用户', banned: '禁言' }[r] || r || '用户'),
 
   // 导出
   exportCsv: async (params) => {

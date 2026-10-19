@@ -3,9 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>普通交流论坛</title>
+<title>交流论坛</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EF%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
+<style>
+.notice-bar{background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px;color:#ad6800}
+.notice-bar b{color:#d46b08}
+.board-group{font-weight:600;font-size:14px;color:var(--muted);padding:6px 2px}
+.board-group:not(:first-child){margin-top:10px}
+.f-tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:4px;vertical-align:2px}
+.f-sticky{background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f}
+.f-digest{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
+.f-lock{background:#f0f0f0;color:#999;border:1px solid #d9d9d9}
+.locked-hint{color:#fa541c;font-size:13px;margin-top:6px}
+</style>
 </head>
 <body>
 <nav class="nav"><div class="nav-inner">
@@ -22,15 +33,13 @@
 </div></nav>
 
 <div class="container">
-  <!-- 列表视图 -->
   <div id="view-list">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <h2 style="margin:0">普通交流论坛</h2>
+      <h2 style="margin:0">交流论坛</h2>
       <button class="btn" id="btn-new-topic">发 帖</button>
     </div>
-    <div class="search-bar" id="board-tabs" style="margin-bottom:12px">
-      <button class="btn ghost" data-id="">全部板块</button>
-    </div>
+    <div id="notices"></div>
+    <div class="search-bar" id="board-tabs" style="margin-bottom:12px"></div>
     <div id="topic-list"></div>
     <div id="pager" style="display:none;text-align:center;margin-top:12px">
       <button class="btn ghost" id="btn-prev">上一页</button>
@@ -39,12 +48,11 @@
     </div>
   </div>
 
-  <!-- 详情视图 -->
   <div id="view-detail" style="display:none">
     <button class="btn ghost" id="btn-back" style="margin-bottom:14px">← 返回论坛</button>
     <div class="card" id="topic-detail"></div>
     <div class="card" id="replies-box"></div>
-    <div class="card">
+    <div class="card" id="reply-form">
       <h3 style="margin-bottom:10px">发表回复</h3>
       <textarea id="reply-content" rows="3" placeholder="写下你的回复"></textarea>
       <div style="margin-top:10px"><button class="btn" id="btn-reply">提交回复</button></div>
@@ -58,10 +66,22 @@
     <h3>发布主题</h3>
     <div class="form-group"><label>选择板块</label><select id="new-board"></select></div>
     <div class="form-group"><label>标题</label><input id="new-title" placeholder="一句话说清问题"></div>
-    <div class="form-group"><label>内容</label><textarea id="new-content" rows="4" placeholder="详细说明"></textarea></div>
+    <div class="form-group"><label>内容</label><textarea id="new-content" rows="4" placeholder="详细说明（含敏感词会被自动替换）"></textarea></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn ghost" onclick="document.getElementById('new-modal').style.display='none'">取消</button>
       <button class="btn" id="btn-submit-topic">发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 移动版块弹窗 -->
+<div class="modal-bg" id="move-modal" style="display:none">
+  <div class="modal">
+    <h3>移动主题到板块</h3>
+    <div class="form-group"><label>目标板块</label><select id="move-board"></select></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn ghost" onclick="document.getElementById('move-modal').style.display='none'">取消</button>
+      <button class="btn" id="btn-confirm-move">移动</button>
     </div>
   </div>
 </div>
@@ -71,39 +91,74 @@
 <script>
 let boards = [], currentBoard = '', page = 1, size = 20, total = 0;
 const id = new URLSearchParams(location.search).get('id');
+let moveTargetTopic = null;
 
 function renderNav() {
   const u = Api.user;
   if (u) {
-    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role === 'admin' ? ' · 管理员' : '');
+    const label = Api.roleLabel(u.role);
+    document.getElementById('nav-user').textContent = (u.name || u.phone) + (u.role !== 'user' ? ' · ' + label : '');
     document.getElementById('nav-login').style.display = 'none';
     document.getElementById('nav-logout').style.display = '';
-    if (u.role === 'admin') document.getElementById('nav-admin').style.display = '';
-  } else {
-    document.getElementById('nav-user').textContent = '未登录';
-  }
+    if (['admin', 'supermod', 'moderator'].includes(u.role)) document.getElementById('nav-admin').style.display = '';
+  } else document.getElementById('nav-user').textContent = '未登录';
 }
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
+
+async function loadNotices() {
+  try {
+    const r = await Api.notices();
+    document.getElementById('notices').innerHTML = (r.list || []).map((n) =>
+      `<div class="notice-bar"><b>公告：</b>${esc(n.content)}</div>`).join('');
+  } catch { /* 忽略 */ }
+}
+
+function canManageBoard(board) {
+  const u = Api.user;
+  if (!u || !board) return false;
+  if (u.role === 'admin' || u.role === 'supermod') return true;
+  if (u.role === 'moderator' && board.moderator_ids) {
+    return board.moderator_ids.split(',').map((x) => parseInt(x, 10)).includes(u.id);
+  }
+  return false;
+}
 
 async function loadBoards() {
   const r = await Api.boards();
   boards = r.list || [];
   const tab = document.getElementById('board-tabs');
-  tab.innerHTML = '<button class="btn ghost" data-id="">全部板块</button>' +
-    boards.map((b) => `<button class="btn ghost" data-id="${b.id}">${esc(b.name)} <span class="badge">${b.topic_count}</span></button>`).join('');
-  tab.querySelectorAll('button').forEach((btn) => {
+  const all = `<button class="btn ghost" data-id="">全部板块</button>`;
+  const groups = boards.map((b) => {
+    const head = `${b.icon || '▸'} <span style="color:${b.color || 'inherit'}">${esc(b.name)}</span>
+      <span class="badge">${b.topic_count}</span>`;
+    const kids = (b.children || []).map((c) =>
+      `<button class="btn ghost" data-id="${c.id}" style="${c.color ? 'color:' + c.color : ''}">
+        ${c.icon || ''} ${esc(c.name)} <span class="badge">${c.topic_count}</span>
+        ${(c.moderator_names || []).length ? `<small style="color:var(--muted)">· 版主 ${esc(c.moderator_names.join('、'))}</small>` : ''}
+      </button>`).join('');
+    return `<div class="board-group">${head}</div>${kids || '<small style="color:#bbb">（无子版块）</small>'}`;
+  }).join('');
+  tab.innerHTML = all + groups;
+  tab.querySelectorAll('button[data-id]').forEach((btn) => {
     btn.onclick = () => { currentBoard = btn.getAttribute('data-id'); page = 1; loadTopics(); };
   });
 }
 
-function escTitle(p) { return esc(p.title); }
+function tags(t) {
+  let s = '';
+  if (t.sticky) s += '<span class="f-tag f-sticky">置顶</span>';
+  if (t.digest) s += '<span class="f-tag f-digest">精华</span>';
+  if (t.locked) s += '<span class="f-tag f-lock">锁定</span>';
+  return s;
+}
+
 async function loadTopics() {
   const d = await Api.topics({ board_id: currentBoard, page, size });
   total = d.total;
   const box = document.getElementById('topic-list');
   box.innerHTML = d.list.length ? d.list.map((t) => `
     <div class="post-card" onclick="location.href='forum.html?id=${t.id}'">
-      <div class="forum-title">${esc(t.title)}</div>
+      <div class="forum-title">${tags(t)}${esc(t.title)}</div>
       <div style="font-size:13px;color:var(--muted)">${esc(t.content || '').slice(0, 80)}${(t.content || '').length > 80 ? '…' : ''}</div>
       <div class="post-meta">
         <span class="badge">${esc(t.board_name || '未分类')}</span>
@@ -122,7 +177,16 @@ document.getElementById('btn-next').onclick = () => { if (page * size < total) {
 // 发帖
 document.getElementById('btn-new-topic').onclick = () => {
   if (!authRequired()) return;
-  document.getElementById('new-board').innerHTML = boards.map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  const opts = [];
+  boards.forEach((b) => {
+    const kids = (b.children || []).filter((c) => c.allow_post !== 0);
+    if (kids.length) {
+      kids.forEach((c) => opts.push(`<option value="${c.id}">${esc(b.name)} › ${esc(c.name)}</option>`));
+    } else if (b.allow_post !== 0 && !b.parent_id) {
+      opts.push(`<option value="${b.id}">${esc(b.name)}</option>`);
+    }
+  });
+  document.getElementById('new-board').innerHTML = opts.join('') || '<option value="">（暂无开放发帖的板块）</option>';
   document.getElementById('new-modal').style.display = 'flex';
 };
 document.getElementById('btn-submit-topic').onclick = async () => {
@@ -142,16 +206,52 @@ document.getElementById('btn-submit-topic').onclick = async () => {
   } catch (e) { toast(e.message, false); }
 };
 
+// 管理操作
+async function doManage(action, value) {
+  if (!authRequired()) return;
+  try {
+    await Api.manageTopic(id, { [action]: value });
+    toast('操作成功');
+    loadTopic();
+  } catch (e) { toast(e.message, false); }
+}
+document.getElementById('btn-confirm-move').onclick = async () => {
+  if (!moveTargetTopic) return;
+  try {
+    await Api.manageTopic(moveTargetTopic, { move_to: parseInt(document.getElementById('move-board').value, 10) });
+    toast('已移动');
+    document.getElementById('move-modal').style.display = 'none';
+    loadTopic();
+  } catch (e) { toast(e.message, false); }
+};
+function openMove() {
+  moveTargetTopic = id;
+  const opts = [];
+  boards.forEach((b) => {
+    const kids = b.children || [];
+    if (kids.length) kids.forEach((c) => opts.push(`<option value="${c.id}">${esc(b.name)} › ${esc(c.name)}</option>`));
+    else opts.push(`<option value="${b.id}">${esc(b.name)}</option>`);
+  });
+  document.getElementById('move-board').innerHTML = opts.join('');
+  document.getElementById('move-modal').style.display = 'flex';
+}
+
 // 详情
 async function loadTopic() {
   const d = await Api.topic(id);
   const t = d.topic;
   const u = Api.user;
-  const canDel = u && (u.role === 'admin' || t.user_id === u.id);
+  const board = (boards.find((b) => b.id === t.board_id) || {}).children?.find((c) => c.id === t.board_id) ||
+    boards.find((b) => b.id === t.board_id);
+  const canManage = canManageBoard({ moderator_ids: (board && board.moderator_ids) || (u && u.role === 'moderator' ? t.moderator_ids : '') });
+  const isMod = u && (u.role === 'admin' || u.role === 'supermod');
+  const isBoardMod = canManage;
+  const canDel = u && (u.role === 'admin' || t.user_id === u.id || canManage);
+
   document.getElementById('view-list').style.display = 'none';
   document.getElementById('view-detail').style.display = '';
   document.getElementById('topic-detail').innerHTML = `
-    <h2 style="margin-bottom:6px">${esc(t.title)}</h2>
+    <h2 style="margin-bottom:6px">${tags(t)}${esc(t.title)}</h2>
     <div class="post-meta" style="margin-bottom:12px">
       <span class="badge">${esc(t.board_name || '未分类')}</span>
       <span>作者：${esc(t.author_name || t.author_phone || '用户' + t.user_id)}</span>
@@ -159,17 +259,26 @@ async function loadTopic() {
       <span>${esc(t.created_at)}</span>
     </div>
     <div style="font-size:15px;line-height:1.7;white-space:pre-wrap">${esc(t.content)}</div>
-    ${canDel ? '<div class="forum-actions"><button class="btn danger btn-sm" id="btn-del-topic">删除主题</button></div>' : ''}`;
-  if (canDel) document.getElementById('btn-del-topic').onclick = async () => {
-    if (!confirm('确认删除该主题及其全部回复？')) return;
-    try { await Api.deleteTopic(id); toast('已删除'); location.href = 'forum.html'; } catch (e) { toast(e.message, false); }
-  };
+    ${t.locked ? '<div class="locked-hint">🔒 本主题已锁定，仅可浏览</div>' : ''}
+    ${(isBoardMod) ? `
+      <div class="forum-actions" style="margin-top:14px">
+        <button class="btn-sm" onclick="doManage('sticky', ${t.sticky ? 0 : 1})">${t.sticky ? '取消置顶' : '置顶'}</button>
+        <button class="btn-sm" onclick="doManage('digest', ${t.digest ? 0 : 1})">${t.digest ? '取消精华' : '设为精华'}</button>
+        <button class="btn-sm" onclick="doManage('locked', ${t.locked ? 0 : 1})">${t.locked ? '解锁' : '锁定'}</button>
+        <button class="btn-sm ghost" onclick="openMove()">移动版块</button>
+        <button class="btn-sm danger" onclick="doManage('deleted', 1)">删除(回收站)</button>
+      </div>` : ''}
+    ${canDel && !isBoardMod ? `
+      <div class="forum-actions" style="margin-top:14px">
+        <button class="btn-sm danger" onclick="doManage('deleted', 1)">删除</button>
+      </div>` : ''}`;
   document.getElementById('replies-box').innerHTML = '<h3 style="margin-bottom:12px">回复（' + d.replies.length + '）</h3>' +
     (d.replies.length ? d.replies.map((r) => `
       <div class="post-card" style="padding:12px 14px;margin-bottom:8px">
         <div style="font-size:14px;white-space:pre-wrap">${esc(r.content)}</div>
         <div class="post-meta"><span>${esc(r.author_name || r.author_phone || '用户' + r.user_id)}</span><span>${esc(r.created_at)}</span></div>
       </div>`).join('') : '<div class="empty">暂无回复，来说两句吧</div>');
+  document.getElementById('reply-form').style.display = t.locked ? 'none' : '';
   document.getElementById('btn-back').onclick = () => location.href = 'forum.html';
   document.getElementById('btn-reply').onclick = async () => {
     if (!authRequired()) return;
@@ -185,9 +294,12 @@ async function loadTopic() {
 }
 
 renderNav();
-if (id) { loadTopic().catch((e) => { if (e.message.includes('未登录')) location.href = 'login.html'; else toast(e.message, false); }); }
+if (id) {
+  loadBoards().catch(() => {});
+  loadTopic().catch((e) => { if (e.message.includes('未登录')) location.href = 'login.html'; else toast(e.message, false); });
+}
 else {
-  Promise.all([loadBoards(), loadTopics()]).catch((e) => toast(e.message, false));
+  Promise.all([loadBoards(), loadTopics(), loadNotices()]).catch((e) => toast(e.message, false));
 }
 </script>
 </body>

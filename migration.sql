@@ -55,3 +55,53 @@ CREATE TABLE IF NOT EXISTS forum_replies (
   content TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
+
+-- ===== v3：Discuz! 风格论坛管理扩展（2026-10）=====
+-- 注意：重复执行时 ALTER 报 duplicate column 属正常，可忽略继续
+
+-- 板块表：二级分类 / 图标颜色 / 版主 / 开放发帖回帖
+ALTER TABLE forum_boards ADD COLUMN parent_id INTEGER DEFAULT 0;
+ALTER TABLE forum_boards ADD COLUMN icon TEXT DEFAULT '';
+ALTER TABLE forum_boards ADD COLUMN color TEXT DEFAULT '';
+ALTER TABLE forum_boards ADD COLUMN moderator_ids TEXT DEFAULT '';
+ALTER TABLE forum_boards ADD COLUMN allow_post INTEGER DEFAULT 1;
+ALTER TABLE forum_boards ADD COLUMN allow_reply INTEGER DEFAULT 1;
+
+-- 主题表：置顶 / 精华 / 锁定 / 审核 / 回收站 / 移动
+ALTER TABLE forum_topics ADD COLUMN sticky INTEGER DEFAULT 0;
+ALTER TABLE forum_topics ADD COLUMN digest INTEGER DEFAULT 0;
+ALTER TABLE forum_topics ADD COLUMN locked INTEGER DEFAULT 0;
+ALTER TABLE forum_topics ADD COLUMN approved INTEGER DEFAULT 1;
+ALTER TABLE forum_topics ADD COLUMN deleted INTEGER DEFAULT 0;
+ALTER TABLE forum_topics ADD COLUMN deleted_at TEXT DEFAULT '';
+ALTER TABLE forum_topics ADD COLUMN moved_from INTEGER DEFAULT 0;
+
+-- 回帖表：审核 / 回收站
+ALTER TABLE forum_replies ADD COLUMN approved INTEGER DEFAULT 1;
+ALTER TABLE forum_replies ADD COLUMN deleted INTEGER DEFAULT 0;
+ALTER TABLE forum_replies ADD COLUMN deleted_at TEXT DEFAULT '';
+
+-- 敏感词表
+CREATE TABLE IF NOT EXISTS forum_banned_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT UNIQUE NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 公告表
+CREATE TABLE IF NOT EXISTS forum_notices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 管理日志表
+CREATE TABLE IF NOT EXISTS forum_admin_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL,
+  action TEXT DEFAULT '',
+  target TEXT DEFAULT '',
+  detail TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);

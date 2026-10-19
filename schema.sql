@@ -85,16 +85,22 @@ CREATE TABLE IF NOT EXISTS custom_fields (
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
--- 论坛板块表
+-- 论坛板块表（v3：支持二级分类、版主、开放发帖/回帖）
 CREATE TABLE IF NOT EXISTS forum_boards (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER DEFAULT 0,          -- 父版块（0=一级分类/版块）
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
+  icon TEXT DEFAULT '',                 -- 图标字符（如 📦）
+  color TEXT DEFAULT '',                -- 主题色
+  moderator_ids TEXT DEFAULT '',        -- 版主 user_id（逗号分隔）
+  allow_post INTEGER DEFAULT 1,         -- 是否开放发帖
+  allow_reply INTEGER DEFAULT 1,        -- 是否开放回帖
   sort_order INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
--- 论坛主题帖表
+-- 论坛主题帖表（v3：置顶/精华/锁定/审核/回收站）
 CREATE TABLE IF NOT EXISTS forum_topics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   board_id INTEGER NOT NULL,
@@ -103,15 +109,50 @@ CREATE TABLE IF NOT EXISTS forum_topics (
   content TEXT DEFAULT '',
   views INTEGER DEFAULT 0,
   reply_count INTEGER DEFAULT 0,
+  sticky INTEGER DEFAULT 0,             -- 置顶
+  digest INTEGER DEFAULT 0,             -- 精华
+  locked INTEGER DEFAULT 0,             -- 锁定（禁止回帖）
+  approved INTEGER DEFAULT 1,           -- 是否通过审核（1=通过 0=待审）
+  deleted INTEGER DEFAULT 0,            -- 回收站软删除
+  deleted_at TEXT DEFAULT '',
+  moved_from INTEGER DEFAULT 0,         -- 移动前版块
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 
--- 论坛回帖表
+-- 论坛回帖表（v3：审核/回收站）
 CREATE TABLE IF NOT EXISTS forum_replies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   topic_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
   content TEXT NOT NULL,
+  approved INTEGER DEFAULT 1,           -- 是否通过审核
+  deleted INTEGER DEFAULT 0,            -- 回收站软删除
+  deleted_at TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 论坛敏感词表（v3，发布/回帖时自动替换为 *）
+CREATE TABLE IF NOT EXISTS forum_banned_words (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  word TEXT UNIQUE NOT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 论坛公告表（v3）
+CREATE TABLE IF NOT EXISTS forum_notices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  content TEXT NOT NULL,
+  active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 论坛管理日志表（v3，Discuz! 风格管理留痕）
+CREATE TABLE IF NOT EXISTS forum_admin_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL,
+  action TEXT DEFAULT '',               -- 如: 置顶/删除主题/封禁
+  target TEXT DEFAULT '',               -- 目标描述（主题/用户等）
+  detail TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 

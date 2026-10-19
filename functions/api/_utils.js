@@ -111,3 +111,39 @@ export async function authFromRequest(env, request) {
 
 // 管理员初始账号：第一次部署后可在 D1 手动将某用户设为 admin：
 //   UPDATE users SET role='admin' WHERE phone='你的手机号';
+
+// ---------- 角色 / 权限（Discuz! 风格）----------
+export function isAdmin(u) { return !!(u && u.role === 'admin'); }
+export function isBanned(u) { return !!(u && u.role === 'banned'); }
+export function roleLabel(r) {
+  return { admin: '管理员', supermod: '超级版主', moderator: '版主', user: '用户', banned: '禁言' }[r] || r || '用户';
+}
+// 是否可管理指定板块：管理员/超级版主管全部；版主管自己名下的板块
+export function canManageBoard(u, board) {
+  if (!u) return false;
+  if (u.role === 'admin' || u.role === 'supermod') return true;
+  if (u.role === 'moderator' && board && board.moderator_ids) {
+    return board.moderator_ids.split(',').map((x) => parseInt(x, 10)).includes(u.id);
+  }
+  return false;
+}
+
+// ---------- 敏感词过滤（命中替换为等长 *）----------
+export async function filterBannedWords(env, text) {
+  if (!text) return text;
+  const { results } = await env.DB.prepare('SELECT word FROM forum_banned_words').all();
+  if (!results.length) return text;
+  for (const r of results) {
+    const w = String(r.word || '');
+    if (!w) continue;
+    text = text.split(w).join('*'.repeat(w.length));
+  }
+  return text;
+}
+
+// ---------- 记录管理操作日志 ----------
+export async function logAdmin(env, adminId, action, target, detail = '') {
+  await env.DB.prepare(
+    'INSERT INTO forum_admin_logs (admin_id, action, target, detail) VALUES (?, ?, ?, ?)'
+  ).bind(adminId, action, target, detail).run();
+}

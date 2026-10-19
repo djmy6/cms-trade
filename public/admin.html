@@ -6,6 +6,19 @@
 <title>后台管理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232563eb' d='M3 3h18v18H3z'/%3E%3Ctext x='6' y='18' font-size='15' fill='%23fff'%3EA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
+<style>
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.tab-btn{padding:8px 14px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:#fff;color:#555;font-size:14px}
+.tab-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.pane{display:none}
+.pane.active{display:block}
+.mg{display:inline-block;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:4px}
+.sticky-tag{background:#f6ffed;color:#389e0d;border:1px solid #b7eb8f}
+.digest-tag{background:#fff7e6;color:#d46b08;border:1px solid #ffd591}
+.lock-tag{background:#f0f0f0;color:#999;border:1px solid #d9d9d9}
+.pending-tag{background:#fff1f0;color:#cf1322;border:1px solid #ffa39e}
+.trash-tag{background:#f5f5f5;color:#8c8c8c;border:1px solid #d9d9d9}
+</style>
 </head>
 <body>
 <nav class="nav"><div class="nav-inner">
@@ -21,124 +34,243 @@
 
 <div class="container">
   <h2 style="margin-bottom:14px">后台管理</h2>
-  <div class="stat-grid" id="stats"></div>
+  <div class="tabs" id="tabs"></div>
 
-  <div class="card">
-    <h3 style="margin-bottom:12px">用户管理</h3>
-    <div class="table-wrap"><table>
-      <thead><tr><th>ID</th><th>手机号</th><th>昵称</th><th>角色</th><th>帖数</th><th>注册时间</th><th>操作</th></tr></thead>
-      <tbody id="users-tbody"></tbody>
-    </table></div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-bottom:12px">全部帖子</h3>
-    <div class="table-wrap"><table>
-      <thead><tr><th>ID</th><th>平台</th><th>店铺</th><th>买家账号</th><th>买家姓名</th><th>单号</th><th>金额</th><th>发布人</th><th>操作</th></tr></thead>
-      <tbody id="posts-tbody"></tbody>
-    </table></div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-bottom:12px">自定义字段管理（发布页动态显示）</h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="cf_label" placeholder="字段名称（如：退货原因）" style="flex:1;min-width:140px">
-      <input id="cf_key" placeholder="字段标识（如：return_reason）" style="flex:1;min-width:150px">
-      <select id="cf_type" style="width:110px"><option value="text">文本</option><option value="number">数字</option><option value="select">下拉</option><option value="textarea">多行</option></select>
-      <input id="cf_options" placeholder="下拉选项（逗号分隔）" style="flex:1;min-width:180px">
-      <button class="btn" id="btn-add-field">添加字段</button>
+  <div class="pane active" id="pane-overview">
+    <div class="stat-grid" id="stats"></div>
+    <div class="card" style="margin-top:14px">
+      <h3 style="margin-bottom:12px">论坛数据</h3>
+      <div class="stat-grid" id="forum-stats"></div>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>名称</th><th>标识</th><th>类型</th><th>必填</th><th>启用</th><th>操作</th></tr></thead>
-      <tbody id="fields-tbody"></tbody>
-    </table></div>
   </div>
 
-  <div class="card">
-    <h3 style="margin-bottom:12px">论坛板块管理</h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="board_name" placeholder="板块名称（如：交易求助）" style="flex:1;min-width:180px">
-      <input id="board_desc" placeholder="板块简介（可选）" style="flex:2;min-width:200px">
-      <button class="btn" id="btn-add-board">添加板块</button>
+  <div class="pane" id="pane-users">
+    <div class="card">
+      <h3 style="margin-bottom:12px">用户管理（用户组：管理员 / 超级版主 / 版主 / 用户 / 禁言）</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="user-kw" placeholder="搜索手机号 / 昵称" style="flex:1;min-width:200px">
+        <button class="btn" id="btn-user-search">搜索</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>手机号</th><th>昵称</th><th>用户组</th><th>帖数</th><th>注册时间</th><th>操作</th></tr></thead>
+        <tbody id="users-tbody"></tbody>
+      </table></div>
     </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>ID</th><th>名称</th><th>简介</th><th>主题数</th></tr></thead>
-      <tbody id="boards-tbody"></tbody>
-    </table></div>
+  </div>
+
+  <div class="pane" id="pane-posts">
+    <div class="card">
+      <h3 style="margin-bottom:12px">交易记录帖子（全部）</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>平台</th><th>店铺</th><th>买家账号</th><th>买家姓名</th><th>单号</th><th>金额</th><th>发布人</th><th>操作</th></tr></thead>
+        <tbody id="posts-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-fields">
+    <div class="card">
+      <h3 style="margin-bottom:12px">自定义字段管理（发布页动态显示）</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="cf_label" placeholder="字段名称（如：退货原因）" style="flex:1;min-width:140px">
+        <input id="cf_key" placeholder="字段标识（如：return_reason）" style="flex:1;min-width:150px">
+        <select id="cf_type" style="width:110px"><option value="text">文本</option><option value="number">数字</option><option value="select">下拉</option><option value="textarea">多行</option></select>
+        <input id="cf_options" placeholder="下拉选项（逗号分隔）" style="flex:1;min-width:180px">
+        <button class="btn" id="btn-add-field">添加字段</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>名称</th><th>标识</th><th>类型</th><th>必填</th><th>启用</th><th>操作</th></tr></thead>
+        <tbody id="fields-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-boards">
+    <div class="card">
+      <h3 style="margin-bottom:12px">版块管理（支持分类/子版块、版主、开放发帖回帖）</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <select id="b_parent" style="width:130px"><option value="0">一级版块</option></select>
+        <input id="b_name" placeholder="版块名称" style="flex:1;min-width:120px">
+        <input id="b_icon" placeholder="图标(如📦)" style="width:70px">
+        <input id="b_color" placeholder="主题色(如#2563eb)" style="width:110px">
+        <input id="b_mods" placeholder="版主ID(逗号分隔)" style="flex:1;min-width:140px">
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="b_allow_post" checked> 发帖</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="b_allow_reply" checked> 回帖</label>
+        <button class="btn" id="btn-add-board">添加板块</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>名称</th><th>层级</th><th>主题数</th><th>版主</th><th>开放</th><th>操作</th></tr></thead>
+        <tbody id="boards-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-topics">
+    <div class="card">
+      <h3 style="margin-bottom:12px">主题管理（置顶 / 精华 / 锁定 / 审核 / 移动 / 回收站）</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <select id="t_board" style="width:140px"><option value="">全部板块</option></select>
+        <select id="t_status" style="width:120px"><option value="all">全部</option><option value="pending">待审核</option><option value="deleted">回收站</option></select>
+        <input id="t_kw" placeholder="标题关键词" style="flex:1;min-width:160px">
+        <button class="btn" id="btn-t-search">查询</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>标题</th><th>板块</th><th>作者</th><th>状态</th><th>回复/浏览</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody id="topics-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-replies">
+    <div class="card">
+      <h3 style="margin-bottom:12px">回复管理（删除 / 恢复 / 审核）</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="r_kw" placeholder="回复内容关键词" style="flex:1;min-width:160px">
+        <button class="btn" id="btn-r-search">查询</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>所属主题</th><th>内容</th><th>作者</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody id="replies-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-banned">
+    <div class="card">
+      <h3 style="margin-bottom:12px">敏感词管理（发布/回帖命中自动替换为 *）</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input id="bw_word" placeholder="敏感词，如：诈骗" style="flex:1;min-width:160px">
+        <button class="btn" id="btn-add-bw">添加敏感词</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>敏感词</th><th>添加时间</th><th>操作</th></tr></thead>
+        <tbody id="banned-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-notices">
+    <div class="card">
+      <h3 style="margin-bottom:12px">论坛公告管理</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input id="nt_content" placeholder="公告内容" style="flex:1;min-width:200px">
+        <button class="btn" id="btn-add-nt">添加公告</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ID</th><th>内容</th><th>启用</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody id="notices-tbody"></tbody>
+      </table></div>
+    </div>
   </div>
 </div>
 <div id="toast"></div>
 <script src="assets/api.js"></script>
 <script>
+let role = (Api.user || {}).role || '';
+let topicPage = 1, replyPage = 1;
+const topicSize = 20, replySize = 20;
+
 function renderNav() {
   const u = Api.user;
   if (u) {
-    document.getElementById('nav-user').textContent = u.name || u.phone;
+    document.getElementById('nav-user').textContent = (u.name || u.phone) + ' · ' + Api.roleLabel(u.role);
     document.getElementById('nav-logout').style.display = '';
   }
 }
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
 
-async function loadStats() {
+function tabs() {
+  const def = [['overview', '概览'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
+  if (!['admin', 'supermod', 'moderator'].includes(role)) { document.getElementById('tabs').innerHTML = '<div style="color:#cf1322">你无权访问后台管理</div>'; return; }
+  const limited = role === 'moderator';
+  const show = def.filter(([k]) => !limited || (k === 'overview' || k === 'topics' || k === 'replies'));
+  document.getElementById('tabs').innerHTML = show.map(([k, label]) => `<button class="tab-btn ${k === 'overview' ? 'active' : ''}" data-tab="${k}">${label}</button>`).join('');
+  document.getElementById('tabs').querySelectorAll('.tab-btn').forEach((b) => { b.onclick = () => showTab(b.getAttribute('data-tab')); });
+  loadOverview();
+  if (limited) { loadModTopicOptions(); loadTopicList(); }
+  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices()]).catch((e) => toast(e.message, false)); }
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.getAttribute('data-tab') === name));
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('active', p.id === 'pane-' + name));
+  if (name === 'users') loadUsers();
+  else if (name === 'posts') loadPosts();
+  else if (name === 'fields') loadFields();
+  else if (name === 'boards') loadBoards();
+  else if (name === 'topics') { if (!topicOptionsLoaded) loadBoardOptions(); loadTopicList(); }
+  else if (name === 'replies') loadReplyList();
+  else if (name === 'banned') loadBanned();
+  else if (name === 'notices') loadNotices();
+  else if (name === 'overview') loadOverview();
+}
+
+async function loadOverview() {
   const { stats } = await Api.admin('stats');
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="n">${esc(stats.users)}</div><div class="t">注册用户</div></div>
-    <div class="stat"><div class="n">${esc(stats.posts)}</div><div class="t">帖子总数</div></div>
+    <div class="stat"><div class="n">${esc(stats.posts)}</div><div class="t">交易帖子</div></div>
     <div class="stat"><div class="n">${esc(stats.admins)}</div><div class="t">管理员</div></div>
     <div class="stat"><div class="n">${esc(stats.refundAmount)}</div><div class="t">仅退款金额合计</div></div>`;
 }
+async function loadForumStats() {
+  try {
+    const d = await Api.forumStats();
+    const s = d.stats;
+    document.getElementById('forum-stats').innerHTML = `
+      <div class="stat"><div class="n">${esc(s.users)}</div><div class="t">会员数</div></div>
+      <div class="stat"><div class="n">${esc(s.topics)}</div><div class="t">主题</div></div>
+      <div class="stat"><div class="n">${esc(s.replies)}</div><div class="t">回复</div></div>
+      <div class="stat"><div class="n">${esc(s.boards)}</div><div class="t">版块</div></div>
+      <div class="stat"><div class="n">${esc(s.bannedWords)}</div><div class="t">敏感词</div></div>
+      <div class="stat"><div class="n">${esc(s.pending)}</div><div class="t">待审核</div></div>
+      <div class="stat"><div class="n">${esc(s.trashed)}</div><div class="t">回收站</div></div>`;
+    if (s.boardDist && s.boardDist.length) {
+      document.getElementById('forum-stats').insertAdjacentHTML('afterend',
+        `<div class="card"><h3 style="margin-bottom:10px">版块主题分布</h3><div>${s.boardDist.map((b) => `${esc(b.icon || '')} ${esc(b.name)}：<b>${b.topic_count}</b>`).join('　')}</div></div>`);
+    }
+  } catch { /* 版主无权限忽略 */ }
+}
 
 async function loadUsers() {
-  const { list } = await Api.admin('users');
+  const kw = document.getElementById('user-kw').value.trim();
+  const { list } = await Api.admin('users?keyword=' + encodeURIComponent(kw));
   document.getElementById('users-tbody').innerHTML = list.map((u) => `
     <tr>
       <td>${u.id}</td><td>${esc(u.phone)}</td><td>${esc(u.name || '-')}</td>
-      <td>${u.role === 'admin' ? '管理员' : '用户'}</td><td>${u.post_count}</td><td>${esc(u.created_at)}</td>
+      <td>${Api.roleLabel(u.role)}</td><td>${u.post_count}</td><td>${esc(u.created_at)}</td>
       <td>
-        ${u.role === 'admin'
-          ? `<button class="btn-sm ghost" onclick="setRole(${u.id},'user')">取消管理员</button>`
-          : `<button class="btn-sm" onclick="setRole(${u.id},'admin')">设为管理员</button>`}
+        <select onchange="setRole(${u.id},this.value)" style="padding:3px 6px">
+          ${['user', 'moderator', 'supermod', 'admin', 'banned'].map((r) => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${Api.roleLabel(r)}</option>`).join('')}
+        </select>
         <button class="btn-sm danger" onclick="delUser(${u.id})">删除</button>
       </td>
     </tr>`).join('') || '<tr><td colspan="7">暂无用户</td></tr>';
 }
+document.getElementById('btn-user-search').onclick = loadUsers;
+document.getElementById('user-kw').addEventListener('keydown', (e) => { if (e.key === 'Enter') loadUsers(); });
+async function setRole(id, role) { try { await Api.setRole(id, role); toast('已更新'); loadUsers(); } catch (e) { toast(e.message, false); } }
+async function delUser(id) { if (!confirm('确认删除该用户及其全部帖子？')) return; try { await Api.deleteUser(id); toast('已删除'); loadUsers(); } catch (e) { toast(e.message, false); } }
 
 async function loadPosts() {
   const { list } = await Api.admin('posts');
   document.getElementById('posts-tbody').innerHTML = list.map((p) => `
-    <tr>
-      <td>${p.id}</td><td>${esc(p.platform || '-')}</td><td>${esc(p.shop_name || '-')}</td>
+    <tr><td>${p.id}</td><td>${esc(p.platform || '-')}</td><td>${esc(p.shop_name || '-')}</td>
       <td>${esc(p.buyer_account || '-')}</td><td>${esc(p.buyer_name || '-')}</td>
       <td>${esc(p.tracking_no || '-')}</td><td>${esc(p.amount || '-')}</td>
       <td>${esc(p.author_name || p.author_phone || p.user_id)}</td>
-      <td><button class="btn-sm danger" onclick="delPost(${p.id})">删除</button></td>
-    </tr>`).join('') || '<tr><td colspan="9">暂无帖子</td></tr>';
+      <td><button class="btn-sm danger" onclick="delPost(${p.id})">删除</button></td></tr>`).join('') || '<tr><td colspan="9">暂无帖子</td></tr>';
 }
-
-async function setRole(id, role) {
-  try { await Api.setRole(id, role); toast('已更新'); loadUsers(); } catch (e) { toast(e.message, false); }
-}
-async function delUser(id) {
-  if (!confirm('确认删除该用户及其全部帖子？')) return;
-  try { await Api.deleteUser(id); toast('已删除'); loadUsers(); loadPosts(); } catch (e) { toast(e.message, false); }
-}
-async function delPost(id) {
-  if (!confirm('确认删除该帖子？')) return;
-  try { await Api.deletePost(id); toast('已删除'); loadPosts(); } catch (e) { toast(e.message, false); }
-}
+async function delPost(id) { if (!confirm('确认删除该帖子？')) return; try { await Api.deletePost(id); toast('已删除'); loadPosts(); } catch (e) { toast(e.message, false); } }
 
 async function loadFields() {
   const { list } = await Api.adminFields();
   document.getElementById('fields-tbody').innerHTML = list.map((f) => `
-    <tr>
-      <td>${esc(f.label)}</td><td>${esc(f.field_key)}</td><td>${esc(f.field_type)}</td>
+    <tr><td>${esc(f.label)}</td><td>${esc(f.field_key)}</td><td>${esc(f.field_type)}</td>
       <td>${f.required ? '是' : '否'}</td>
       <td><button class="btn-sm ghost" onclick="toggleField(${f.id},${f.active ? 0 : 1})">${f.active ? '停用' : '启用'}</button></td>
-      <td>
-        <button class="btn-sm ghost" onclick="editField(${f.id})">编辑</button>
-        <button class="btn-sm danger" onclick="deleteField(${f.id})">删除</button>
-      </td>
-    </tr>`).join('') || '<tr><td colspan="6">暂无自定义字段，可在上方添加（发布页会动态显示）</td></tr>';
+      <td><button class="btn-sm ghost" onclick="editField(${f.id})">编辑</button>
+        <button class="btn-sm danger" onclick="deleteField(${f.id})">删除</button></td></tr>`).join('') || '<tr><td colspan="6">暂无自定义字段</td></tr>';
 }
 document.getElementById('btn-add-field').onclick = async () => {
   const label = document.getElementById('cf_label').value.trim();
@@ -146,64 +278,154 @@ document.getElementById('btn-add-field').onclick = async () => {
   const type = document.getElementById('cf_type').value;
   const options = document.getElementById('cf_options').value.trim();
   if (!label || !key) return toast('请填写字段名称和标识', false);
-  try {
-    await Api.createField({ label, field_key: key, field_type: type, options, required: 0, sort_order: 0 });
-    toast('字段已添加');
-    ['cf_label', 'cf_key', 'cf_options'].forEach((i) => document.getElementById(i).value = '');
-    loadFields();
-  } catch (e) { toast(e.message, false); }
+  try { await Api.createField({ label, field_key: key, field_type: type, options, required: 0, sort_order: 0 }); toast('字段已添加');
+    ['cf_label', 'cf_key', 'cf_options'].forEach((i) => document.getElementById(i).value = ''); loadFields(); }
+  catch (e) { toast(e.message, false); }
 };
-async function toggleField(id, active) {
-  const { list } = await Api.adminFields();
-  const f = list.find((x) => x.id === id);
-  if (!f) return;
-  try {
-    await Api.updateField(id, { label: f.label, field_key: f.field_key, field_type: f.field_type, options: f.options, required: f.required, sort_order: f.sort_order, active });
-    toast('已更新'); loadFields();
-  } catch (e) { toast(e.message, false); }
-}
+async function toggleField(id, active) { const { list } = await Api.adminFields(); const f = list.find((x) => x.id === id); if (!f) return; try { await Api.updateField(id, { ...f, active }); toast('已更新'); loadFields(); } catch (e) { toast(e.message, false); } }
 async function editField(id) {
-  const { list } = await Api.adminFields();
-  const f = list.find((x) => x.id === id);
-  if (!f) return;
+  const { list } = await Api.adminFields(); const f = list.find((x) => x.id === id); if (!f) return;
   const label = prompt('字段名称', f.label); if (label === null) return;
   const type = prompt('类型(text/number/select/textarea)', f.field_type);
   const options = prompt('下拉选项（逗号分隔）', f.options);
   const required = confirm('该字段是否必填？') ? 1 : 0;
-  try {
-    await Api.updateField(id, { label, field_key: f.field_key, field_type: type, options, required, sort_order: f.sort_order, active: f.active });
-    toast('已保存'); loadFields();
-  } catch (e) { toast(e.message, false); }
+  try { await Api.updateField(id, { ...f, label, field_type: type, options, required }); toast('已保存'); loadFields(); } catch (e) { toast(e.message, false); }
 }
-async function deleteField(id) {
-  if (!confirm('删除该字段？已填写的该字段内容将不再显示。')) return;
-  try { await Api.deleteField(id); toast('已删除'); loadFields(); } catch (e) { toast(e.message, false); }
-}
+async function deleteField(id) { if (!confirm('删除该字段？')) return; try { await Api.deleteField(id); toast('已删除'); loadFields(); } catch (e) { toast(e.message, false); } }
 
+let boardsAll = [];
 async function loadBoards() {
-  const { list } = await Api.boards();
-  document.getElementById('boards-tbody').innerHTML = list.map((b) => `
-    <tr><td>${b.id}</td><td>${esc(b.name)}</td><td>${esc(b.description || '-')}</td><td>${b.topic_count}</td></tr>`).join('') || '<tr><td colspan="4">暂无板块，可在上方添加</td></tr>';
+  const r = await Api.boards();
+  boardsAll = r.list || [];
+  document.getElementById('b_parent').innerHTML = '<option value="0">一级版块</option>' + boardsAll.filter((b) => !b.parent_id).map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  document.getElementById('boards-tbody').innerHTML = boardsAll.map((b) => {
+    const kids = (b.children || []).map((c) => `<tr><td>${c.id}</td><td>${esc(c.icon || '')} ${esc(c.name)}</td><td>${esc(b.name)} › 子版块</td>
+      <td>${c.topic_count}</td><td>${esc((c.moderator_names || []).join('、') || '-')}</td><td>${c.allow_post ? '发' : ''}${c.allow_reply ? '回' : ''}</td>
+      <td><button class="btn-sm ghost" onclick="editBoard(${c.id})">编辑</button><button class="btn-sm danger" onclick="delBoard(${c.id})">删除</button></td></tr>`).join('');
+    return `<tr><td>${b.id}</td><td>${esc(b.icon || '')} ${esc(b.name)}</td><td>一级版块</td>
+      <td>${b.topic_count}</td><td>${esc((b.moderator_names || []).join('、') || '-')}</td><td>${b.allow_post ? '发' : ''}${b.allow_reply ? '回' : ''}</td>
+      <td><button class="btn-sm ghost" onclick="editBoard(${b.id})">编辑</button><button class="btn-sm danger" onclick="delBoard(${b.id})">删除</button></td></tr>${kids}`;
+  }).join('') || '<tr><td colspan="7">暂无板块</td></tr>';
 }
 document.getElementById('btn-add-board').onclick = async () => {
-  const name = document.getElementById('board_name').value.trim();
-  const desc = document.getElementById('board_desc').value.trim();
-  if (!name) return toast('请填写板块名称', false);
-  try {
-    await Api.createBoard({ name, description: desc });
-    toast('板块已添加');
-    document.getElementById('board_name').value = '';
-    document.getElementById('board_desc').value = '';
-    loadBoards();
-  } catch (e) { toast(e.message, false); }
+  const name = document.getElementById('b_name').value.trim();
+  if (!name) return toast('请填写版块名称', false);
+  const p = { parent_id: parseInt(document.getElementById('b_parent').value, 10) || 0, name,
+    icon: document.getElementById('b_icon').value.trim(), color: document.getElementById('b_color').value.trim(),
+    moderator_ids: document.getElementById('b_mods').value.trim(),
+    allow_post: document.getElementById('b_allow_post').checked ? 1 : 0, allow_reply: document.getElementById('b_allow_reply').checked ? 1 : 0 };
+  try { await Api.createBoard(p); toast('板块已添加'); ['b_name', 'b_icon', 'b_color', 'b_mods'].forEach((i) => document.getElementById(i).value = ''); loadBoards(); }
+  catch (e) { toast(e.message, false); }
 };
+async function editBoard(id) {
+  const all = [].concat(boardsAll, boardsAll.flatMap((b) => b.children || []));
+  const b = all.find((x) => x.id === id); if (!b) return;
+  const name = prompt('版块名称', b.name); if (name === null) return;
+  const icon = prompt('图标', b.icon || '');
+  const color = prompt('主题色', b.color || '');
+  const mods = prompt('版主ID(逗号分隔)', b.moderator_ids || '');
+  const allowPost = confirm('开放发帖？') ? 1 : 0;
+  const allowReply = confirm('开放回帖？') ? 1 : 0;
+  const desc = prompt('版块简介', b.description || '');
+  try { await Api.updateBoard(id, { parent_id: b.parent_id, name, description: desc, icon, color, moderator_ids: mods, allow_post: allowPost, allow_reply: allowReply, sort_order: b.sort_order }); toast('已保存'); loadBoards(); } catch (e) { toast(e.message, false); }
+}
+async function delBoard(id) { if (!confirm('删除该版块？')) return; try { await Api.deleteBoard(id); toast('已删除'); loadBoards(); } catch (e) { toast(e.message, false); } }
+
+let topicOptionsLoaded = false;
+async function loadBoardOptions() {
+  const r = await Api.boards();
+  document.getElementById('t_board').innerHTML = '<option value="">全部板块</option>' + [].concat(r.list || [], (r.list || []).flatMap((b) => b.children || [])).map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  topicOptionsLoaded = true;
+}
+async function loadTopicList() {
+  const p = { board_id: document.getElementById('t_board').value, status: document.getElementById('t_status').value, keyword: document.getElementById('t_kw').value.trim(), page: topicPage, size: topicSize };
+  const d = await Api.adminTopics(p);
+  document.getElementById('topics-tbody').innerHTML = d.list.map((t) => `
+    <tr><td>${t.id}</td><td>${topicTags(t)}${esc(t.title)}</td><td>${esc(t.board_name || '-')}</td>
+      <td>${esc(t.author_name || t.author_phone || t.user_id)}</td><td>${topicTags(t)}</td>
+      <td>${t.reply_count}/${t.views}</td><td>${esc(t.created_at)}</td><td>${topicOps(t)}</td></tr>`).join('') || '<tr><td colspan="8">暂无主题</td></tr>';
+}
+function topicTags(t) {
+  let s = '';
+  if (t.sticky) s += '<span class="mg sticky-tag">置顶</span>';
+  if (t.digest) s += '<span class="mg digest-tag">精华</span>';
+  if (t.locked) s += '<span class="mg lock-tag">锁定</span>';
+  if (t.approved === 0) s += '<span class="mg pending-tag">待审</span>';
+  if (t.deleted) s += '<span class="mg trash-tag">回收站</span>';
+  return s;
+}
+function topicOps(t) {
+  let s = '';
+  if (!t.deleted) {
+    s += `<button class="btn-sm" onclick="mt(${t.id},'sticky',${t.sticky ? 0 : 1})">${t.sticky ? '取置顶' : '置顶'}</button>`;
+    s += `<button class="btn-sm" onclick="mt(${t.id},'digest',${t.digest ? 0 : 1})">${t.digest ? '取精华' : '精华'}</button>`;
+    s += `<button class="btn-sm" onclick="mt(${t.id},'locked',${t.locked ? 0 : 1})">${t.locked ? '解锁' : '锁定'}</button>`;
+    if (t.approved === 0) s += `<button class="btn-sm" onclick="mt(${t.id},'approved',1)">通过</button>`;
+    s += `<button class="btn-sm" onclick="mt(${t.id},'deleted',1)">回收</button>`;
+  } else s += `<button class="btn-sm" onclick="mt(${t.id},'deleted',0)">恢复</button>`;
+  s += `<button class="btn-sm danger" onclick="hardDelTopic(${t.id})">硬删</button>`;
+  return s;
+}
+async function mt(id, k, v) { try { await Api.manageTopic(id, { [k]: v }); toast('已更新'); loadTopicList(); } catch (e) { toast(e.message, false); } }
+async function hardDelTopic(id) { if (!confirm('彻底删除该主题及全部回复？不可恢复！')) return; try { await Api.hardDeleteTopic(id); toast('已彻底删除'); loadTopicList(); } catch (e) { toast(e.message, false); } }
+document.getElementById('btn-t-search').onclick = () => { topicPage = 1; loadTopicList(); };
+document.getElementById('t_kw').addEventListener('keydown', (e) => { if (e.key === 'Enter') { topicPage = 1; loadTopicList(); } });
+
+async function loadReplyList() {
+  const p = { keyword: document.getElementById('r_kw').value.trim(), status: 'all', page: replyPage, size: replySize };
+  const d = await Api.adminReplies(p);
+  document.getElementById('replies-tbody').innerHTML = d.list.map((r) => `
+    <tr><td>${r.id}</td><td><a href="forum.html?id=${r.topic_id}" target="_blank">${esc((r.topic_title || '').slice(0, 30))}</a></td>
+      <td>${esc((r.content || '').slice(0, 50))}</td><td>${esc(r.author_name || r.author_phone || r.user_id)}</td>
+      <td>${r.deleted ? '<span class="mg trash-tag">回收站</span>' : (r.approved === 0 ? '<span class="mg pending-tag">待审</span>' : '正常')}</td>
+      <td>${esc(r.created_at)}</td>
+      <td>${r.deleted ? `<button class="btn-sm" onclick="mr(${r.id},'deleted',0)">恢复</button>` : `<button class="btn-sm" onclick="mr(${r.id},'deleted',1)">回收</button>`}
+        ${r.approved === 0 ? `<button class="btn-sm" onclick="mr(${r.id},'approved',1)">通过</button>` : ''}
+        <button class="btn-sm danger" onclick="hardDelReply(${r.id})">硬删</button></td></tr>`).join('') || '<tr><td colspan="7">暂无回复</td></tr>';
+}
+async function mr(id, k, v) { try { await Api.manageReply(id, { [k]: v }); toast('已更新'); loadReplyList(); } catch (e) { toast(e.message, false); } }
+async function hardDelReply(id) { if (!confirm('彻底删除该回复？')) return; try { await Api.hardDeleteReply(id); toast('已删除'); loadReplyList(); } catch (e) { toast(e.message, false); } }
+document.getElementById('btn-r-search').onclick = () => { replyPage = 1; loadReplyList(); };
+
+async function loadBanned() {
+  const { list } = await Api.bannedWords();
+  document.getElementById('banned-tbody').innerHTML = list.map((w) => `<tr><td>${w.id}</td><td>${esc(w.word)}</td><td>${esc(w.created_at)}</td><td><button class="btn-sm danger" onclick="delBw(${w.id})">删除</button></td></tr>`).join('') || '<tr><td colspan="4">暂无敏感词</td></tr>';
+}
+document.getElementById('btn-add-bw').onclick = async () => {
+  const word = document.getElementById('bw_word').value.trim();
+  if (!word) return toast('请填写敏感词', false);
+  try { await Api.addBannedWord(word); toast('已添加'); document.getElementById('bw_word').value = ''; loadBanned(); } catch (e) { toast(e.message, false); }
+};
+async function delBw(id) { if (!confirm('删除该敏感词？')) return; try { await Api.deleteBannedWord(id); toast('已删除'); loadBanned(); } catch (e) { toast(e.message, false); } }
+
+async function loadNotices() {
+  const { list } = await Api.adminNotices();
+  document.getElementById('notices-tbody').innerHTML = list.map((n) => `
+    <tr><td>${n.id}</td><td>${esc(n.content)}</td><td>${n.active ? '启用' : '停用'}</td><td>${esc(n.created_at)}</td>
+      <td><button class="btn-sm" onclick="setNotice(${n.id},${n.active ? 0 : 1})">${n.active ? '停用' : '启用'}</button>
+      <button class="btn-sm danger" onclick="delNotice(${n.id})">删除</button></td></tr>`).join('') || '<tr><td colspan="5">暂无公告</td></tr>';
+}
+document.getElementById('btn-add-nt').onclick = async () => {
+  const content = document.getElementById('nt_content').value.trim();
+  if (!content) return toast('请填写公告内容', false);
+  try { await Api.addNotice(content); toast('已添加'); document.getElementById('nt_content').value = ''; loadNotices(); } catch (e) { toast(e.message, false); }
+};
+async function setNotice(id, active) {
+  const { list } = await Api.adminNotices();
+  const n = list.find((x) => x.id === id); if (!n) return;
+  try { await Api.updateNotice(id, { content: n.content, active }); toast('已更新'); loadNotices(); } catch (e) { toast(e.message, false); }
+}
+async function delNotice(id) { if (!confirm('删除该公告？')) return; try { await Api.deleteNotice(id); toast('已删除'); loadNotices(); } catch (e) { toast(e.message, false); } }
+
+async function loadModTopicOptions() {
+  const { list: boards } = await Api.boards();
+  document.getElementById('t_board').innerHTML = '<option value="">全部板块</option>' + [].concat(boards || [], (boards || []).flatMap((b) => b.children || [])).map((b) => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  topicOptionsLoaded = true;
+}
 
 renderNav();
-Promise.all([loadStats(), loadUsers(), loadPosts(), loadFields(), loadBoards()]).catch((e) => {
-  if (e.message.includes('管理员')) toast('需要管理员权限', false);
-  else if (e.message.includes('未登录')) location.href = 'login.html';
-  else toast(e.message, false);
-});
+if (!Api.user) { location.href = 'login.html'; }
+else tabs();
 </script>
 </body>
 </html>
