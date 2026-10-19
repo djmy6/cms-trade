@@ -2,7 +2,7 @@
 //   PUT    /api/admin/forum/topics/:id   body: { sticky, digest, locked, approved, deleted, move_to }
 //   DELETE /api/admin/forum/topics/:id   硬删除
 //   权限：管理员/超版全量；版主仅自己名下板块
-import { json, error, readBody, authFromRequest, canManageBoard, logAdmin } from '../../_utils.js';
+import { json, error, readBody, authFromRequest, canManageBoard, logAdmin } from '../../../_utils.js';
 
 export const onRequestPut = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);

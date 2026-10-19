@@ -1,6 +1,6 @@
 // 后台：删除敏感词
 //   DELETE /api/admin/forum/banned-words/:id
-import { json, error, authFromRequest, isAdmin, logAdmin } from '../../_utils.js';
+import { json, error, authFromRequest, isAdmin, logAdmin } from '../../../_utils.js';
 
 export const onRequestDelete = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);

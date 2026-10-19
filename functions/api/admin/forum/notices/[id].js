@@ -1,7 +1,7 @@
 // 后台：编辑/删除公告
 //   PUT    /api/admin/forum/notices/:id   body: { content, active }
 //   DELETE /api/admin/forum/notices/:id
-import { json, error, readBody, authFromRequest, isAdmin, logAdmin } from '../../_utils.js';
+import { json, error, readBody, authFromRequest, isAdmin, logAdmin } from '../../../_utils.js';
 
 export const onRequestPut = async ({ env, request, params }) => {
   const u = await authFromRequest(env, request);
