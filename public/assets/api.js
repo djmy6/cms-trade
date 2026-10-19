@@ -36,7 +36,7 @@ const Api = {
 
   // 帖子
   posts: (params) => Api.get('/api/posts?' + new URLSearchParams(params)),
-  post: (id) => Api.get('/api/posts/' + id),
+  getPost: (id) => Api.get('/api/posts/' + id),
   createPost: (p) => Api.post('/api/posts', p),
   updatePost: (id, p) => Api.put('/api/posts/' + id, p),
   deletePost: (id) => Api.del('/api/posts/' + id),

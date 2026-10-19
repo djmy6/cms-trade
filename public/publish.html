@@ -118,7 +118,7 @@ async function loadFields() {
 
 if (editId) {
   document.getElementById('title').textContent = '编辑交易记录';
-  Api.post(editId).then((d) => {
+  Api.getPost(editId).then((d) => {
     const post = d.post;
     for (const id of IDS) document.getElementById(id).value = post[id] || '';
     document.getElementById('address_detail').value = post.address_detail || '';

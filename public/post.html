@@ -44,7 +44,7 @@ document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api
 
 const id = new URLSearchParams(location.search).get('id');
 async function load() {
-  const d = await Api.post(id);
+  const d = await Api.getPost(id);
   const p = d.post;
   const u = Api.user;
   const canEdit = u && (u.role === 'admin' || p.user_id === u.id);
