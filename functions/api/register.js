@@ -1,10 +1,6 @@
 // POST /api/register
 // body: { phone, code, email, emailCode, password, name }
-// 校验受 site_config 控制：
-//   phone_register_enabled=1 → 手机号+短信验证码必填必验；0 → 手机号必填但无需验证码
-//   email_register_enabled=1 + require_email=1 → 邮箱+邮箱验证码必填必验
-//   email_register_enabled=1 + require_email=0 → 邮箱可选，填了则需邮箱验证码
-//   email_register_enabled=0 → 邮箱可不填，填了也不校验
+// 纯邮箱注册模式：手机号选填，邮箱+邮箱验证码必填
 import { json, error, readBody, generateSalt, hashPassword, signToken } from './_utils.js';
 import { readSiteConfig } from './site-config.js';
 
@@ -21,18 +17,20 @@ export const onRequestPost = async ({ request, env }) => {
   const name = String(body.name || '').trim();
 
   const cfg = await readSiteConfig(env);
-  const smsRequired = cfg.phone_register_enabled !== '0';          // 手机注册验证登录 开关
-  const emailActive = cfg.email_register_enabled !== '0';          // 邮箱注册验证登录 开关
-  const emailRequired = emailActive && cfg.require_email !== '0';  // 是否强制邮箱
+  const emailActive = cfg.email_register_enabled !== '0';
+  const emailRequired = emailActive && cfg.require_email !== '0';
 
-  if (!PHONE_RE.test(phone)) return error('手机号格式不正确');
   if (password.length < 6) return error('密码至少 6 位');
+
+  // 手机号选填：填了才校验格式和短信验证码
+  const hasPhone = !!phone;
+  if (hasPhone && !PHONE_RE.test(phone)) return error('手机号格式不正确');
 
   const now = Date.now();
   let rec = null, erec = null;
 
-  // 手机短信验证码
-  if (smsRequired) {
+  // 手机短信验证码（填了手机号且开启了手机验证才校验）
+  if (hasPhone && cfg.phone_register_enabled !== '0') {
     if (!code) return error('请填写短信验证码');
     const { results } = await env.DB.prepare(
       'SELECT id, code, expires_at FROM sms_codes WHERE phone = ? AND purpose = ? AND used = 0 ORDER BY id DESC LIMIT 1'
@@ -43,16 +41,14 @@ export const onRequestPost = async ({ request, env }) => {
     if (rec.code !== code) return error('短信验证码不正确');
   }
 
-  // 邮箱验证码
-  if (emailActive) {
-    if (emailRequired) {
-      if (!email) return error('请填写邮箱');
-      if (!EMAIL_RE.test(email)) return error('邮箱格式不正确');
-      if (!emailCode) return error('请填写邮箱验证码');
-    } else if (email) {
-      if (!EMAIL_RE.test(email)) return error('邮箱格式不正确');
-      if (!emailCode) return error('请填写邮箱验证码');
-    }
+  // 邮箱验证码（必填）
+  if (emailRequired) {
+    if (!email) return error('请填写邮箱');
+    if (!EMAIL_RE.test(email)) return error('邮箱格式不正确');
+    if (!emailCode) return error('请填写邮箱验证码');
+  } else if (email) {
+    if (!EMAIL_RE.test(email)) return error('邮箱格式不正确');
+    if (!emailCode) return error('请填写邮箱验证码');
   }
   if (email && emailCode) {
     const ec = await env.DB.prepare(
@@ -65,20 +61,26 @@ export const onRequestPost = async ({ request, env }) => {
   }
 
   // 手机号 / 邮箱是否已注册
-  const exist = await env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).all();
-  if (exist.results.length) return error('该手机号已注册，请直接登录');
+  if (hasPhone) {
+    const exist = await env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).all();
+    if (exist.results.length) return error('该手机号已注册，请直接登录');
+  }
   if (email) {
     const eexist = await env.DB.prepare('SELECT id FROM users WHERE email = ? AND email != ?').bind(email, '').all();
     if (eexist.results.length) return error('该邮箱已注册，请直接登录');
   }
 
-  // 创建用户
+  // 创建用户（手机号为空时插入 NULL，避免 UNIQUE 约束冲突）
   const salt = generateSalt();
   const hash = await hashPassword(password, salt);
   await env.DB.prepare(
     'INSERT INTO users (phone, email, password_hash, salt, name, role) VALUES (?, ?, ?, ?, ?, ?)'
-  ).bind(phone, email, hash, salt, name, 'user').run();
-  const { results: us } = await env.DB.prepare('SELECT id FROM users WHERE phone = ?').bind(phone).all();
+  ).bind(hasPhone ? phone : null, email, hash, salt, name, 'user').run();
+
+  // 查询新用户 ID（优先用邮箱查）
+  const { results: us } = await env.DB.prepare(
+    'SELECT id FROM users WHERE email = ? ORDER BY id DESC LIMIT 1'
+  ).bind(email).all();
   const uid = us[0].id;
 
   // 标记用过的验证码

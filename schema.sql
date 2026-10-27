@@ -4,12 +4,12 @@
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  phone TEXT UNIQUE NOT NULL,
+  phone TEXT UNIQUE,                  -- 手机号选填（纯邮箱注册时为 NULL）
   password_hash TEXT NOT NULL,
   salt TEXT NOT NULL,
   name TEXT DEFAULT '',
   role TEXT DEFAULT 'user',          -- 'user' 普通用户 / 'admin' 管理员
-  email TEXT DEFAULT '',             -- 邮箱（v4，注册验证）
+  email TEXT DEFAULT '',             -- 邮箱（注册验证，纯邮箱注册时必填）
   avatar TEXT DEFAULT '',            -- 头像（v6，dataURL 或 URL）
   signature TEXT DEFAULT '',         -- 个性签名（v6）
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
