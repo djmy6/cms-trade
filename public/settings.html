@@ -34,6 +34,27 @@
       <button class="btn" id="btn-save">保存设置</button>
       <span id="saved" style="margin-left:12px;color:#16a34a;font-size:13px"></span>
     </div>
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #eee">
+
+    <h3 style="margin-bottom:6px">修改密码</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:14px">修改你的登录密码，下次登录使用新密码。</p>
+    <div class="form-group">
+      <label>当前密码</label>
+      <input id="old-password" type="password" placeholder="输入当前密码">
+    </div>
+    <div class="form-group">
+      <label>新密码（至少 6 位）</label>
+      <input id="new-password" type="password" placeholder="输入新密码">
+    </div>
+    <div class="form-group">
+      <label>确认新密码</label>
+      <input id="confirm-password" type="password" placeholder="再次输入新密码">
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn" id="btn-change-password">修改密码</button>
+      <span id="pwd-msg" style="margin-left:12px;font-size:13px"></span>
+    </div>
   </div>
 </div>
 <div id="toast"></div>
@@ -85,6 +106,25 @@ document.getElementById('btn-save').onclick = async () => {
     document.getElementById('saved').textContent = '已保存';
     setTimeout(() => document.getElementById('saved').textContent = '', 2000);
   } catch (e) { toast(e.message, false); }
+};
+
+// 修改密码
+document.getElementById('btn-change-password').onclick = async () => {
+  const oldp = document.getElementById('old-password').value;
+  const newp = document.getElementById('new-password').value;
+  const confp = document.getElementById('confirm-password').value;
+  const msg = document.getElementById('pwd-msg');
+  if (!oldp) { msg.textContent = '请输入当前密码'; msg.style.color = '#dc2626'; return; }
+  if (newp.length < 6) { msg.textContent = '新密码至少 6 位'; msg.style.color = '#dc2626'; return; }
+  if (newp !== confp) { msg.textContent = '两次输入的新密码不一致'; msg.style.color = '#dc2626'; return; }
+  try {
+    await Api.changePassword(oldp, newp);
+    msg.textContent = '密码已修改'; msg.style.color = '#16a34a';
+    document.getElementById('old-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+    setTimeout(() => msg.textContent = '', 3000);
+  } catch (e) { msg.textContent = e.message; msg.style.color = '#dc2626'; }
 };
 
 renderNav();
