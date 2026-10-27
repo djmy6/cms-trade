@@ -48,6 +48,7 @@ export const onRequestPost = async ({ request, env }) => {
     smtp_port: body.smtp_port !== undefined ? String(body.smtp_port) : stored.smtp_port,
     smtp_secure: body.smtp_secure !== undefined ? String(body.smtp_secure) : stored.smtp_secure,
     smtp_user: (body.smtp_user !== undefined ? String(body.smtp_user) : stored.smtp_user).trim(),
+    smtp_from_email: (body.smtp_from_email !== undefined ? String(body.smtp_from_email) : stored.smtp_from_email || '').trim(),
     smtp_from: body.smtp_from !== undefined ? String(body.smtp_from) : stored.smtp_from,
     smtp_pass: (body.smtp_pass !== undefined && String(body.smtp_pass) !== '')
       ? String(body.smtp_pass)

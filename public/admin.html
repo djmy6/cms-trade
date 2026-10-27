@@ -234,7 +234,8 @@
               <option value="none">无加密（25）</option>
             </select>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件邮箱账号：<input id="smtp-user" placeholder="如 noreply@example.com" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件邮箱账号：<input id="smtp-user" placeholder="SMTP登录账号，如 c03064001@smtp-brevo.com" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人邮箱：<input id="smtp-from-email" placeholder="实际发件地址，如 you@gmail.com（留空则用上面的账号）" style="flex:1;min-width:220px"></div>
           <div style="display:flex;align-items:center;gap:8px;font-size:14px">授权码 / 密码：<input id="smtp-pass" type="password" placeholder="QQ/163 等邮箱请填授权码；留空表示不修改" style="flex:1;min-width:220px"></div>
           <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人名称：<input id="smtp-from" placeholder="如 交易记录CMS" style="flex:1;min-width:220px"></div>
         </div>
@@ -621,6 +622,7 @@ async function loadMail() {
     el('smtp-port').value = config.smtp_port || '';
     el('smtp-secure').value = config.smtp_secure || 'ssl';
     el('smtp-user').value = config.smtp_user || '';
+    el('smtp-from-email').value = config.smtp_from_email || '';
     el('smtp-pass').value = '';
     el('smtp-from').value = config.smtp_from || '';
     el('smtp-status').textContent = '';
@@ -637,6 +639,7 @@ function mailPayload() {
     smtp_port: el('smtp-port').value.trim(),
     smtp_secure: el('smtp-secure').value,
     smtp_user: el('smtp-user').value.trim(),
+    smtp_from_email: el('smtp-from-email').value.trim(),
     smtp_from: el('smtp-from').value.trim(),
   };
   const pass = el('smtp-pass').value;

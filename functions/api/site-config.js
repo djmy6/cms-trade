@@ -25,7 +25,8 @@ export const SITE_MAIL_DEFAULTS = {
   smtp_host: '',         // SMTP 服务器，如 smtp.qq.com
   smtp_port: '465',      // 端口：465(ssl) / 587(tls) / 25(none)
   smtp_secure: 'ssl',    // ssl | tls | none
-  smtp_user: '',         // 发件邮箱账号（同时作为 From 地址）
+  smtp_user: '',         // SMTP 登录账号（认证用；Brevo 等平台为系统账号）
+  smtp_from_email: '',   // 发件人邮箱（MAIL FROM；留空则用 smtp_user）
   smtp_pass: '',         // 授权码 / 密码（所有接口不回显）
   smtp_from: '',         // 发件人显示名称（可空）
 };

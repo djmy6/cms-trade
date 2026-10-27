@@ -1,10 +1,9 @@
 // 极简 SMTP 客户端（Cloudflare Workers 运行时专用）
 // 基于 cloudflare:sockets 的 TCP Socket 实现，支持：
-//   ssl  → 465 端口直连 TLS（secureTransport: 'on'）
-//   tls  → 587 端口 STARTTLS 升级
+//   ssl  → 465 端口直连 TLS（secureTransport: 'on'，连接建立即 TLS 握手）
+//   tls  → 587 端口 STARTTLS 升级（先明文 EHLO，再 socket.startTls() 升级）
 //   none → 25 端口明文
 // 认证：AUTH LOGIN（授权码/密码场景，兼容 QQ/163/Gmail 等）
-// 无需 nodejs_compat 兼容标志，纯 Web 标准 API（btoa/TextEncoder/Promise）。
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -16,19 +15,43 @@ function b64u8(s) {
   return btoa(bin);
 }
 
+// 带超时的 Promise race，promise 结束后自动清理 timer（防止泄漏）
 function withTimeout(p, ms, msg) {
-  return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+  let timer;
+  const timeout = new Promise((_, rej) => {
+    timer = setTimeout(() => rej(new Error(msg)), ms);
+  });
+  return Promise.race([
+    p.finally(() => clearTimeout(timer)),
+    timeout,
+  ]);
 }
 
-// 核心 SMTP 会话。transport 需提供：
-//   readLine(timeoutMs): Promise<string>     读取一行（不含 CRLF）
-//   write(line): Promise<void>               写入一行文本（内部追加 CRLF）
-//   close(): Promise<void>
-//   startTls(): Promise<transport> | null    升级为 TLS 后的新 transport（仅 STARTTLS 路径需要）
+// RFC 2047 编码 Subject（非 ASCII 时用 =?UTF-8?B?...?=）
+function encodeSubject(s) {
+  if (/^[\x20-\x7E]*$/.test(s)) return s;
+  return '=?UTF-8?B?' + b64u8(s) + '?=';
+}
+
+// SMTP DATA 点转义：每行开头的 . 变为 ..，防止服务器提前结束邮件
+function escapeData(text) {
+  return text.replace(/\r\n/g, '\n').replace(/^\./gm, '..');
+}
+
+// 从邮箱地址提取域名作为 EHLO 主机名（很多服务器拒绝 EHLO localhost）
+function ehloHostFromUser(user) {
+  const at = user.lastIndexOf('@');
+  if (at >= 0 && at < user.length - 1) return user.slice(at + 1);
+  return 'mail.local';
+}
+
+// 核心 SMTP 会话
 export async function smtpConversation(transport, cfg, { to, subject, text }) {
   const user = (cfg.smtp_user || '').trim();
   const pass = cfg.smtp_pass || '';
   if (!user) throw new Error('发件邮箱账号为空');
+
+  const ehloHost = ehloHostFromUser(user);
 
   const readLine = () => transport.readLine(45000);
   const write = (line) => transport.write(line + CRLF);
@@ -46,21 +69,22 @@ export async function smtpConversation(transport, cfg, { to, subject, text }) {
     return r;
   }
 
-  // 1) 问候
+  // 1) 读 220 问候
   let r = await readLine();
   if (!/^2\d\d/.test(r)) throw new Error('SMTP 连接失败: ' + r.trim());
 
-  // 2) EHLO
-  r = await cmd('EHLO localhost');
+  // 2) EHLO（用发件邮箱域名，不用 localhost）
+  r = await cmd('EHLO ' + ehloHost);
   if (!/^2\d\d/.test(r)) throw new Error('EHLO 失败: ' + r.trim());
 
-  // 3) STARTTLS（tls 模式）
+  // 3) STARTTLS（仅 tls/587 模式）
   if (cfg.smtp_secure === 'tls') {
     if (typeof transport.startTls !== 'function') throw new Error('当前环境不支持 STARTTLS');
     r = await cmd('STARTTLS');
     if (!/^2\d\d/.test(r)) throw new Error('STARTTLS 失败: ' + r.trim());
     transport = await transport.startTls();
-    await cmd('EHLO localhost');
+    // TLS 升级后必须重新 EHLO
+    await cmd('EHLO ' + ehloHost);
   }
 
   // 4) AUTH LOGIN
@@ -73,8 +97,8 @@ export async function smtpConversation(transport, cfg, { to, subject, text }) {
   r = await readLine();
   if (!/^2\d\d/.test(r)) throw new Error('SMTP 认证失败（密码/授权码错误）: ' + r.trim());
 
-  // 5) 发信
-  const from = user;
+  // 5) 发信（MAIL FROM 优先用 smtp_from_email，兼容 Brevo 等认证账号与发件人不同的平台）
+  const from = (cfg.smtp_from_email || user || '').trim();
   const fromName = (cfg.smtp_from || '').trim();
   r = await cmd('MAIL FROM:<' + from + '>');
   if (!/^2\d\d/.test(r)) throw new Error('MAIL FROM 被拒: ' + r.trim());
@@ -87,12 +111,12 @@ export async function smtpConversation(transport, cfg, { to, subject, text }) {
   const msg =
     'From: ' + fromHeader + CRLF +
     'To: <' + to + '>' + CRLF +
-    'Subject: ' + subject + CRLF +
+    'Subject: ' + encodeSubject(subject) + CRLF +
     'MIME-Version: 1.0' + CRLF +
     'Content-Type: text/plain; charset=utf-8' + CRLF +
     'Content-Transfer-Encoding: 8bit' + CRLF +
     CRLF +
-    text + CRLF +
+    escapeData(text) + CRLF +
     '.' + CRLF;
   await transport.write(msg);
   r = await readLine();
@@ -118,7 +142,11 @@ async function workersTransport(host, port, secureTransport) {
         const remain = deadline - Date.now();
         if (remain <= 0) throw new Error('SMTP 响应超时');
         const { value, done } = await withTimeout(reader.read(), remain, 'SMTP 响应超时');
-        if (done) throw new Error('SMTP 连接被对端关闭');
+        // done=true 表示对端关闭了连接；附带已收到的部分数据便于排查
+        if (done) {
+          const hint = buf ? '（已收到部分数据: ' + JSON.stringify(buf.slice(-300)) + '）' : '';
+          throw new Error('SMTP 连接被对端关闭' + hint);
+        }
         buf += dec.decode(value);
       }
       const i = buf.indexOf('\n');
@@ -130,7 +158,10 @@ async function workersTransport(host, port, secureTransport) {
       await writer.write(enc.encode(line));
     },
     async startTls() {
-      // socket.startTls() 返回 TLS 包装后的新 Socket（部分环境返回 Promise）
+      // 必须先释放旧 reader/writer 的 lock，否则 socket.startTls() 会失败
+      try { reader.releaseLock(); } catch {}
+      try { writer.releaseLock(); } catch {}
+      // 升级为 TLS，返回新的 Socket
       let tls = socket.startTls();
       if (tls && typeof tls.then === 'function') tls = await tls;
       socket = tls;
@@ -140,9 +171,9 @@ async function workersTransport(host, port, secureTransport) {
       return transport;
     },
     async close() {
-      try { await writer.close(); } catch { /* 忽略 */ }
-      try { reader.releaseLock(); } catch { /* 忽略 */ }
-      try { socket.close(); } catch { /* 忽略 */ }
+      try { await writer.close(); } catch {}
+      try { reader.releaseLock(); } catch {}
+      try { socket.close(); } catch {}
     },
   };
   return transport;
@@ -155,7 +186,10 @@ export async function sendEmail(cfg, mail) {
   const secure = (cfg.smtp_secure || 'ssl').toLowerCase();
   if (!host || !port || port <= 0 || port > 65535) throw new Error('SMTP 配置不完整：请填写服务器和端口');
   if (!['ssl', 'tls', 'none'].includes(secure)) throw new Error('SMTP 加密方式无效');
-  const secureTransport = secure === 'tls' ? 'starttls' : (secure === 'none' ? 'off' : 'on');
+  // ssl(465) → secureTransport:'on'（连接建立即 TLS 握手，隐式 SSL）
+  // tls(587) → secureTransport:'starttls'（允许后续调用 socket.startTls() 升级）
+  // none(25) → secureTransport:'off'（明文）
+  const secureTransport = secure === 'ssl' ? 'on' : (secure === 'tls' ? 'starttls' : 'off');
   const transport = await workersTransport(host, port, secureTransport);
   return smtpConversation(transport, cfg, mail);
 }
