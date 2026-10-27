@@ -58,6 +58,16 @@ export const onRequestPost = async ({ request, env }) => {
   if (!cfg.smtp_user) return error('请先填写发件邮箱账号');
 
   try {
+    // Brevo 走 HTTPS API（SMTP 端口从 Workers 连不通）
+    if ((cfg.smtp_host || '').includes('brevo')) {
+      const { sendBrevoEmail } = await import('../_brevo.js');
+      await sendBrevoEmail(cfg, {
+        to,
+        subject: '【交易记录CMS】邮箱配置测试',
+        text: '这是一封测试邮件，说明你的发件邮箱配置已生效。\n\n收件人：' + to + '\n发件服务：Brevo API',
+      });
+      return json({ ok: true, sent: true, mode: 'brevo', host: cfg.smtp_host });
+    }
     await sendEmail(cfg, {
       to,
       subject: '【交易记录CMS】邮箱配置测试',

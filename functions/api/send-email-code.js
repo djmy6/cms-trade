@@ -63,9 +63,19 @@ export const onRequestPost = async ({ request, env }) => {
     }
   }
 
-  // --- 后台配置了 SMTP（手动发件邮箱）→ 用 SMTP 真发 ---
+  // --- 后台配置了 SMTP（手动发件邮箱）→ 用 SMTP 或 Brevo API 真发 ---
   if (mail.smtp_enabled === '1' && (mail.smtp_host || '').trim() && (mail.smtp_user || '').trim()) {
     try {
+      // Brevo 走 HTTPS API（SMTP 端口从 Workers 连不通）
+      if ((mail.smtp_host || '').includes('brevo')) {
+        const { sendBrevoEmail } = await import('./_brevo.js');
+        await sendBrevoEmail(mail, {
+          to: email,
+          subject: '【交易记录CMS】邮箱验证码',
+          text: `您的验证码是：${code}，${emailExpireMin} 分钟内有效。如非本人操作请忽略本邮件。`,
+        });
+        return json({ sent: true, mode: 'brevo' });
+      }
       await sendEmail(mail, {
         to: email,
         subject: '【交易记录CMS】邮箱验证码',
@@ -73,8 +83,7 @@ export const onRequestPost = async ({ request, env }) => {
       });
       return json({ sent: true, mode: 'smtp' });
     } catch (e) {
-      // SMTP 发送失败 → 回退 SendGrid / mock，方便联调与容错
-      console.error('SMTP send failed:', e && e.message ? e.message : e);
+      console.error('邮件发送失败:', e && e.message ? e.message : e);
     }
   }
 
