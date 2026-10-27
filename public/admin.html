@@ -199,23 +199,48 @@
 
   <div class="pane" id="pane-smtp">
     <div class="card">
-      <h3 style="margin-bottom:12px">发件邮箱（SMTP）配置</h3>
-      <div style="margin-bottom:12px;font-size:13px;color:#666">用于发送邮箱验证码（注册 / 找回密码等）。启用后，系统发信将使用你填写的 SMTP 账号；不启用则保持现有发信方式。</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="smtp-enable" style="width:18px;height:18px"> <b>启用手动发件邮箱配置</b></label>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">SMTP 服务器：<input id="smtp-host" placeholder="如 smtp.qq.com" style="flex:1;min-width:220px"></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">端口：<input id="smtp-port" type="number" placeholder="465" style="width:110px">
-          <select id="smtp-secure" style="width:150px">
-            <option value="ssl">SSL/TLS（465）</option>
-            <option value="tls">STARTTLS（587）</option>
-            <option value="none">无加密（25）</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件邮箱账号：<input id="smtp-user" placeholder="如 noreply@example.com" style="flex:1;min-width:220px"></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">授权码 / 密码：<input id="smtp-pass" type="password" placeholder="QQ/163 等邮箱请填授权码；留空表示不修改" style="flex:1;min-width:220px"></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人名称：<input id="smtp-from" placeholder="如 交易记录CMS" style="flex:1;min-width:220px"></div>
-        <div style="display:flex;align-items:center;gap:8px;font-size:14px">测试收件邮箱：<input id="smtp-test-to" placeholder="输入一个邮箱用于测试发送" style="flex:1;min-width:220px"></div>
+      <h3 style="margin-bottom:12px">发件邮箱配置</h3>
+      <div style="margin-bottom:12px;font-size:13px;color:#666">用于发送邮箱验证码（注册 / 找回密码等）。可绑定你的自有域名使用内置邮箱服务，或手动配置 SMTP 账号。</div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:12px">发送方式：
+        <select id="mail-provider" style="width:300px">
+          <option value="resend">内置邮箱服务（Resend · 绑定自有域名）</option>
+          <option value="smtp">手动 SMTP（QQ/163 等）</option>
+        </select>
       </div>
+
+      <div id="mail-box-resend" style="display:none">
+        <div style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:#444;line-height:1.7">
+          <b>首次使用（绑定自有域名，免费版 3000 封/月）：</b><br>
+          ① 在 <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a> 注册并登录；<br>
+          ② 左侧 Domains → Add Domain，填入你的域名（如 9dd.cc.cd），按页面提示复制 DNS 记录：<b>DKIM（TXT）+ SPF（TXT）</b>；<br>
+          ③ 到 Cloudflare 控制台 → 你的域名 → DNS → 记录 → 添加这两条，保存后回 Resend 点 Verify，等验证通过（几分钟～几小时）；<br>
+          ④ 在 Resend 的 API Keys 页面创建 Key（re_ 开头），填到下方即可用你的域名发信。
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件域名：<input id="resend-domain" placeholder="如 9dd.cc.cd（需已在 Resend 验证）" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">API Key：<input id="resend-api-key" type="password" placeholder="re_ 开头；留空表示不修改" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人名称：<input id="resend-from-name" placeholder="如 交易记录CMS" style="flex:1;min-width:220px"></div>
+        </div>
+      </div>
+
+      <div id="mail-box-smtp" style="display:none">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="smtp-enable" style="width:18px;height:18px"> <b>启用手动发件邮箱配置</b></label>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">SMTP 服务器：<input id="smtp-host" placeholder="如 smtp.qq.com" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">端口：<input id="smtp-port" type="number" placeholder="465" style="width:110px">
+            <select id="smtp-secure" style="width:150px">
+              <option value="ssl">SSL/TLS（465）</option>
+              <option value="tls">STARTTLS（587）</option>
+              <option value="none">无加密（25）</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件邮箱账号：<input id="smtp-user" placeholder="如 noreply@example.com" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">授权码 / 密码：<input id="smtp-pass" type="password" placeholder="QQ/163 等邮箱请填授权码；留空表示不修改" style="flex:1;min-width:220px"></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人名称：<input id="smtp-from" placeholder="如 交易记录CMS" style="flex:1;min-width:220px"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:16px">测试收件邮箱：<input id="smtp-test-to" placeholder="输入一个邮箱用于测试发送" style="flex:1;min-width:220px"></div>
       <div style="display:flex;gap:10px;align-items:center">
         <button class="btn" id="btn-save-smtp">保存配置</button>
         <button class="btn ghost" id="btn-test-smtp">发送测试邮件</button>
@@ -266,7 +291,7 @@ function tabs() {
   document.getElementById('tabs').querySelectorAll('.tab-btn').forEach((b) => { b.onclick = () => showTab(b.getAttribute('data-tab')); });
   loadOverview();
   if (limited) { loadModTopicOptions(); loadTopicList(); }
-  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig(), loadSmtp(), loadReports()]).catch((e) => toast(e.message, false)); }
+  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig(), loadMail(), loadReports()]).catch((e) => toast(e.message, false)); }
 }
 
 function showTab(name) {
@@ -282,7 +307,7 @@ function showTab(name) {
   else if (name === 'notices') loadNotices();
   else if (name === 'reports') loadReports();
   else if (name === 'config') loadConfig();
-  else if (name === 'smtp') loadSmtp();
+  else if (name === 'smtp') loadMail();
   else if (name === 'overview') loadOverview();
 }
 
@@ -577,53 +602,79 @@ document.getElementById('btn-save-config').onclick = async () => {
   } catch (e) { toast(e.message, false); }
 };
 
-/* 发件邮箱（SMTP）配置 */
-async function loadSmtp() {
+/* 发件邮箱配置（内置 Resend / 手动 SMTP） */
+function el(id) { return document.getElementById(id); }
+function toggleMailProvider() {
+  const p = el('mail-provider').value;
+  el('mail-box-resend').style.display = p === 'resend' ? '' : 'none';
+  el('mail-box-smtp').style.display = p === 'smtp' ? '' : 'none';
+}
+async function loadMail() {
   try {
     const { config } = await Api.adminConfig();
-    document.getElementById('smtp-enable').checked = config.smtp_enabled === '1';
-    document.getElementById('smtp-host').value = config.smtp_host || '';
-    document.getElementById('smtp-port').value = config.smtp_port || '';
-    document.getElementById('smtp-secure').value = config.smtp_secure || 'ssl';
-    document.getElementById('smtp-user').value = config.smtp_user || '';
-    document.getElementById('smtp-pass').value = '';
-    document.getElementById('smtp-from').value = config.smtp_from || '';
-    document.getElementById('smtp-status').textContent = '';
+    el('mail-provider').value = config.mail_provider || 'smtp';
+    el('resend-domain').value = config.resend_domain || '';
+    el('resend-api-key').value = '';
+    el('resend-from-name').value = config.resend_from_name || '';
+    el('smtp-enable').checked = config.smtp_enabled === '1';
+    el('smtp-host').value = config.smtp_host || '';
+    el('smtp-port').value = config.smtp_port || '';
+    el('smtp-secure').value = config.smtp_secure || 'ssl';
+    el('smtp-user').value = config.smtp_user || '';
+    el('smtp-pass').value = '';
+    el('smtp-from').value = config.smtp_from || '';
+    el('smtp-status').textContent = '';
+    toggleMailProvider();
   } catch (e) { toast(e.message, false); }
 }
-function smtpPayload() {
+function mailPayload() {
   const c = {
-    smtp_enabled: document.getElementById('smtp-enable').checked ? '1' : '0',
-    smtp_host: document.getElementById('smtp-host').value.trim(),
-    smtp_port: document.getElementById('smtp-port').value.trim(),
-    smtp_secure: document.getElementById('smtp-secure').value,
-    smtp_user: document.getElementById('smtp-user').value.trim(),
-    smtp_from: document.getElementById('smtp-from').value.trim(),
+    mail_provider: el('mail-provider').value,
+    resend_domain: el('resend-domain').value.trim(),
+    resend_from_name: el('resend-from-name').value.trim(),
+    smtp_enabled: el('smtp-enable').checked ? '1' : '0',
+    smtp_host: el('smtp-host').value.trim(),
+    smtp_port: el('smtp-port').value.trim(),
+    smtp_secure: el('smtp-secure').value,
+    smtp_user: el('smtp-user').value.trim(),
+    smtp_from: el('smtp-from').value.trim(),
   };
-  const pass = document.getElementById('smtp-pass').value;
+  const pass = el('smtp-pass').value;
   if (pass) c.smtp_pass = pass;
+  const key = el('resend-api-key').value;
+  if (key) c.resend_api_key = key;
   return c;
 }
 document.getElementById('btn-save-smtp').onclick = async () => {
   try {
     const { config: cur } = await Api.adminConfig();
-    const c = { ...(cur || {}), ...smtpPayload() };
-    if (c.smtp_enabled === '1' && (!c.smtp_host || !c.smtp_port || !c.smtp_user)) return toast('请填写完整的 SMTP 服务器、端口和账号', false);
+    const c = { ...(cur || {}), ...mailPayload() };
+    if (c.mail_provider === 'resend') {
+      if (!c.resend_domain) return toast('请填写发件域名（需先在 Resend 验证）', false);
+    } else if (c.smtp_enabled === '1' && (!c.smtp_host || !c.smtp_port || !c.smtp_user)) {
+      return toast('请填写完整的 SMTP 服务器、端口和账号', false);
+    }
     await Api.updateAdminConfig(c);
-    document.getElementById('smtp-pass').value = '';
+    el('smtp-pass').value = '';
+    el('resend-api-key').value = '';
     toast('发件邮箱配置已保存');
   } catch (e) { toast(e.message, false); }
 };
 document.getElementById('btn-test-smtp').onclick = async () => {
-  const to = document.getElementById('smtp-test-to').value.trim();
+  const to = el('smtp-test-to').value.trim();
   if (!to) return toast('请先填写测试收件邮箱', false);
-  const c = smtpPayload();
-  if (!c.smtp_host || !c.smtp_port || !c.smtp_user) return toast('请先填写 SMTP 服务器、端口和账号', false);
+  const c = mailPayload();
+  if (c.mail_provider === 'resend') {
+    if (!c.resend_domain) return toast('请先填写发件域名', false);
+  } else if (!c.smtp_host || !c.smtp_port || !c.smtp_user) {
+    return toast('请先填写 SMTP 服务器、端口和账号', false);
+  }
   c.to = to;
-  document.getElementById('smtp-status').textContent = '正在发送测试邮件...';
-  try { await Api.sendTestEmail(c); document.getElementById('smtp-status').textContent = '测试邮件已发送，请查收'; toast('测试邮件已发送'); }
-  catch (e) { document.getElementById('smtp-status').textContent = ''; toast(e.message, false); }
+  el('smtp-status').textContent = '正在发送测试邮件...';
+  try { await Api.sendTestEmail(c); el('smtp-status').textContent = '测试邮件已发送，请查收'; toast('测试邮件已发送'); }
+  catch (e) { el('smtp-status').textContent = ''; toast(e.message, false); }
 };
+el('mail-provider').onchange = toggleMailProvider;
 
 renderNav();
 if (!Api.user) { location.href = 'login.html'; }

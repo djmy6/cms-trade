@@ -12,20 +12,30 @@ export const SITE_CONFIG_DEFAULTS = {
   code_resend_seconds: '45',     // 验证码重发间隔（秒）
 };
 
-// 发件邮箱（SMTP）配置默认值。仅后台管理员可见，公开接口（/api/site-config）不返回。
-export const SITE_SMTP_DEFAULTS = {
-  smtp_enabled: '0',   // 1 启用手动 SMTP 发信 / 0 停用（保持原 SendGrid/mock 方式）
-  smtp_host: '',       // SMTP 服务器，如 smtp.qq.com
-  smtp_port: '465',    // 端口：465(ssl) / 587(tls) / 25(none)
-  smtp_secure: 'ssl',  // ssl | tls | none
-  smtp_user: '',       // 发件邮箱账号（同时作为 From 地址）
-  smtp_pass: '',       // 授权码 / 密码（所有接口不回显）
-  smtp_from: '',       // 发件人显示名称（可空）
+// 发件邮箱（邮件服务）配置默认值。仅后台管理员可见，公开接口（/api/site-config）不返回。
+// mail_provider: resend=内置邮箱服务（Resend，绑定自有域名） | smtp=手动 SMTP
+export const SITE_MAIL_DEFAULTS = {
+  mail_provider: 'smtp',
+  // 内置 Resend（绑定自有域名）
+  resend_api_key: '',    // Resend API Key（re_ 开头，所有接口不回显）
+  resend_domain: '',     // 发件域名（须已在 Resend 验证，如 9dd.cc.cd）
+  resend_from_name: '',  // 发件人显示名称（可空）
+  // 手动 SMTP
+  smtp_enabled: '0',     // 1 启用手动 SMTP 发信 / 0 停用
+  smtp_host: '',         // SMTP 服务器，如 smtp.qq.com
+  smtp_port: '465',      // 端口：465(ssl) / 587(tls) / 25(none)
+  smtp_secure: 'ssl',    // ssl | tls | none
+  smtp_user: '',         // 发件邮箱账号（同时作为 From 地址）
+  smtp_pass: '',         // 授权码 / 密码（所有接口不回显）
+  smtp_from: '',         // 发件人显示名称（可空）
 };
 
-// 从 site_config 表读取 SMTP 配置并合并默认值
-export async function readSmtpConfig(env) {
-  const defaults = { ...SITE_SMTP_DEFAULTS };
+// 兼容旧名称（早期版本导出的 SITE_SMTP_DEFAULTS / readSmtpConfig）
+export const SITE_SMTP_DEFAULTS = SITE_MAIL_DEFAULTS;
+
+// 从 site_config 表读取邮件配置并合并默认值
+export async function readMailConfig(env) {
+  const defaults = { ...SITE_MAIL_DEFAULTS };
   try {
     const { results } = await env.DB.prepare('SELECT key, value FROM site_config').all();
     for (const r of results) if (r.key in defaults) defaults[r.key] = r.value;
@@ -34,6 +44,9 @@ export async function readSmtpConfig(env) {
   }
   return defaults;
 }
+
+// 兼容旧名称
+export const readSmtpConfig = readMailConfig;
 
 // 从 site_config 表读取并合并默认值
 export async function readSiteConfig(env) {
