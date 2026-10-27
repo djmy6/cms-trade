@@ -12,6 +12,29 @@ export const SITE_CONFIG_DEFAULTS = {
   code_resend_seconds: '45',     // 验证码重发间隔（秒）
 };
 
+// 发件邮箱（SMTP）配置默认值。仅后台管理员可见，公开接口（/api/site-config）不返回。
+export const SITE_SMTP_DEFAULTS = {
+  smtp_enabled: '0',   // 1 启用手动 SMTP 发信 / 0 停用（保持原 SendGrid/mock 方式）
+  smtp_host: '',       // SMTP 服务器，如 smtp.qq.com
+  smtp_port: '465',    // 端口：465(ssl) / 587(tls) / 25(none)
+  smtp_secure: 'ssl',  // ssl | tls | none
+  smtp_user: '',       // 发件邮箱账号（同时作为 From 地址）
+  smtp_pass: '',       // 授权码 / 密码（所有接口不回显）
+  smtp_from: '',       // 发件人显示名称（可空）
+};
+
+// 从 site_config 表读取 SMTP 配置并合并默认值
+export async function readSmtpConfig(env) {
+  const defaults = { ...SITE_SMTP_DEFAULTS };
+  try {
+    const { results } = await env.DB.prepare('SELECT key, value FROM site_config').all();
+    for (const r of results) if (r.key in defaults) defaults[r.key] = r.value;
+  } catch {
+    // 表不存在时用默认值
+  }
+  return defaults;
+}
+
 // 从 site_config 表读取并合并默认值
 export async function readSiteConfig(env) {
   const defaults = { ...SITE_CONFIG_DEFAULTS };

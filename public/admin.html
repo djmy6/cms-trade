@@ -197,6 +197,33 @@
     </div>
   </div>
 
+  <div class="pane" id="pane-smtp">
+    <div class="card">
+      <h3 style="margin-bottom:12px">发件邮箱（SMTP）配置</h3>
+      <div style="margin-bottom:12px;font-size:13px;color:#666">用于发送邮箱验证码（注册 / 找回密码等）。启用后，系统发信将使用你填写的 SMTP 账号；不启用则保持现有发信方式。</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px"><input type="checkbox" id="smtp-enable" style="width:18px;height:18px"> <b>启用手动发件邮箱配置</b></label>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">SMTP 服务器：<input id="smtp-host" placeholder="如 smtp.qq.com" style="flex:1;min-width:220px"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">端口：<input id="smtp-port" type="number" placeholder="465" style="width:110px">
+          <select id="smtp-secure" style="width:150px">
+            <option value="ssl">SSL/TLS（465）</option>
+            <option value="tls">STARTTLS（587）</option>
+            <option value="none">无加密（25）</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件邮箱账号：<input id="smtp-user" placeholder="如 noreply@example.com" style="flex:1;min-width:220px"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">授权码 / 密码：<input id="smtp-pass" type="password" placeholder="QQ/163 等邮箱请填授权码；留空表示不修改" style="flex:1;min-width:220px"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">发件人名称：<input id="smtp-from" placeholder="如 交易记录CMS" style="flex:1;min-width:220px"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">测试收件邮箱：<input id="smtp-test-to" placeholder="输入一个邮箱用于测试发送" style="flex:1;min-width:220px"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn" id="btn-save-smtp">保存配置</button>
+        <button class="btn ghost" id="btn-test-smtp">发送测试邮件</button>
+        <span id="smtp-status" style="font-size:13px;color:#666"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="pane" id="pane-reports">
     <div class="card">
       <h3 style="margin-bottom:12px">举报管理（待处理 <b id="rep-pending">0</b> 条）</h3>
@@ -231,7 +258,7 @@ function renderNav() {
 document.getElementById('nav-logout').onclick = (e) => { e.preventDefault(); Api.logout(); location.href = 'login.html'; };
 
 function tabs() {
-  const def = [['overview', '概览'], ['config', '登录注册'], ['reports', '举报'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
+  const def = [['overview', '概览'], ['config', '登录注册'], ['smtp', '发件邮箱'], ['reports', '举报'], ['users', '用户'], ['posts', '交易帖子'], ['fields', '自定义字段'], ['boards', '版块'], ['topics', '主题'], ['replies', '回复'], ['banned', '敏感词'], ['notices', '公告']];
   if (!['admin', 'supermod', 'moderator'].includes(role)) { document.getElementById('tabs').innerHTML = '<div style="color:#cf1322">你无权访问后台管理</div>'; return; }
   const limited = role === 'moderator';
   const show = def.filter(([k]) => !limited || (k === 'overview' || k === 'topics' || k === 'replies'));
@@ -239,7 +266,7 @@ function tabs() {
   document.getElementById('tabs').querySelectorAll('.tab-btn').forEach((b) => { b.onclick = () => showTab(b.getAttribute('data-tab')); });
   loadOverview();
   if (limited) { loadModTopicOptions(); loadTopicList(); }
-  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig(), loadReports()]).catch((e) => toast(e.message, false)); }
+  else { Promise.all([loadForumStats(), loadUsers(), loadPosts(), loadFields(), loadBoards(), loadBanned(), loadNotices(), loadConfig(), loadSmtp(), loadReports()]).catch((e) => toast(e.message, false)); }
 }
 
 function showTab(name) {
@@ -255,6 +282,7 @@ function showTab(name) {
   else if (name === 'notices') loadNotices();
   else if (name === 'reports') loadReports();
   else if (name === 'config') loadConfig();
+  else if (name === 'smtp') loadSmtp();
   else if (name === 'overview') loadOverview();
 }
 
@@ -533,7 +561,9 @@ async function loadConfig() {
 }
 document.getElementById('btn-save-config').onclick = async () => {
   try {
+    const { config: cur } = await Api.adminConfig();
     const c = {
+      ...(cur || {}),
       phone_register_enabled: document.getElementById('cfg-phone').checked ? '1' : '0',
       email_register_enabled: document.getElementById('cfg-email').checked ? '1' : '0',
       one_click_login_enabled: document.getElementById('cfg-onclick').checked ? '1' : '0',
@@ -545,6 +575,54 @@ document.getElementById('btn-save-config').onclick = async () => {
     await Api.updateAdminConfig(c);
     toast('注册/登录配置已保存');
   } catch (e) { toast(e.message, false); }
+};
+
+/* 发件邮箱（SMTP）配置 */
+async function loadSmtp() {
+  try {
+    const { config } = await Api.adminConfig();
+    document.getElementById('smtp-enable').checked = config.smtp_enabled === '1';
+    document.getElementById('smtp-host').value = config.smtp_host || '';
+    document.getElementById('smtp-port').value = config.smtp_port || '';
+    document.getElementById('smtp-secure').value = config.smtp_secure || 'ssl';
+    document.getElementById('smtp-user').value = config.smtp_user || '';
+    document.getElementById('smtp-pass').value = '';
+    document.getElementById('smtp-from').value = config.smtp_from || '';
+    document.getElementById('smtp-status').textContent = '';
+  } catch (e) { toast(e.message, false); }
+}
+function smtpPayload() {
+  const c = {
+    smtp_enabled: document.getElementById('smtp-enable').checked ? '1' : '0',
+    smtp_host: document.getElementById('smtp-host').value.trim(),
+    smtp_port: document.getElementById('smtp-port').value.trim(),
+    smtp_secure: document.getElementById('smtp-secure').value,
+    smtp_user: document.getElementById('smtp-user').value.trim(),
+    smtp_from: document.getElementById('smtp-from').value.trim(),
+  };
+  const pass = document.getElementById('smtp-pass').value;
+  if (pass) c.smtp_pass = pass;
+  return c;
+}
+document.getElementById('btn-save-smtp').onclick = async () => {
+  try {
+    const { config: cur } = await Api.adminConfig();
+    const c = { ...(cur || {}), ...smtpPayload() };
+    if (c.smtp_enabled === '1' && (!c.smtp_host || !c.smtp_port || !c.smtp_user)) return toast('请填写完整的 SMTP 服务器、端口和账号', false);
+    await Api.updateAdminConfig(c);
+    document.getElementById('smtp-pass').value = '';
+    toast('发件邮箱配置已保存');
+  } catch (e) { toast(e.message, false); }
+};
+document.getElementById('btn-test-smtp').onclick = async () => {
+  const to = document.getElementById('smtp-test-to').value.trim();
+  if (!to) return toast('请先填写测试收件邮箱', false);
+  const c = smtpPayload();
+  if (!c.smtp_host || !c.smtp_port || !c.smtp_user) return toast('请先填写 SMTP 服务器、端口和账号', false);
+  c.to = to;
+  document.getElementById('smtp-status').textContent = '正在发送测试邮件...';
+  try { await Api.sendTestEmail(c); document.getElementById('smtp-status').textContent = '测试邮件已发送，请查收'; toast('测试邮件已发送'); }
+  catch (e) { document.getElementById('smtp-status').textContent = ''; toast(e.message, false); }
 };
 
 renderNav();

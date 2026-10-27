@@ -53,6 +53,8 @@ const Api = {
   siteConfig: () => Api.get('/api/site-config'),
   adminConfig: () => Api.get('/api/admin/config'),
   updateAdminConfig: (c) => Api.put('/api/admin/config', c),
+  // 发件邮箱（SMTP）配置（与注册登录配置共用 /api/admin/config 存取）
+  sendTestEmail: (s) => Api.post('/api/admin/send-test-email', s),
 
   // 后台
   admin: (seg) => Api.get('/api/admin/' + seg),

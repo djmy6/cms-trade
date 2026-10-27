@@ -1,0 +1,5 @@
+# Cloudflare wrangler 本地缓存（含账号凭据，严禁提交）
+.wrangler/
+*.log
+.DS_Store
+node_modules/
